@@ -10,13 +10,11 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('home')
 
   return (
-    <div className="min-h-screen">
+    <>
       <Navigation currentPage={currentPage} setPage={setCurrentPage} />
-      <main>
-        {currentPage === 'home' && <HomePage setPage={setCurrentPage} />}
-        {currentPage === 'report' && <ReportPage />}
-        {currentPage === 'news' && <NewsPage />}
-      </main>
-    </div>
+      {currentPage === 'home' && <HomePage setPage={setCurrentPage} />}
+      {currentPage === 'report' && <ReportPage />}
+      {currentPage === 'news' && <NewsPage />}
+    </>
   )
 }
