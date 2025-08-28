@@ -8,19 +8,19 @@ export default function Navigation({ currentPage, setPage }) {
             <div className="hidden md:flex space-x-6">
               <button
                 onClick={() => setPage('home')}
-                className={currentPage === 'home' ? 'text-cyan-400' : 'text-gray-300'}
+                className={`transition ${currentPage === 'home' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}`}
               >
                 Home
               </button>
               <button
                 onClick={() => setPage('report')}
-                className={currentPage === 'report' ? 'text-cyan-400' : 'text-gray-300'}
+                className={`transition ${currentPage === 'report' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}`}
               >
                 Report
               </button>
               <button
                 onClick={() => setPage('news')}
-                className={currentPage === 'news' ? 'text-cyan-400' : 'text-gray-300'}
+                className={`transition ${currentPage === 'news' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}`}
               >
                 News
               </button>
