@@ -313,7 +313,18 @@ export default function ReportContent() {
                 <ul id="newsList" className="divide-y divide-white/10">
                   {stockData?.news?.length > 0 ? stockData.news.map((item, i) => (
                     <li key={i} className="py-2">
-                      <a href={item.url || '#'} target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -m-2 p-2 rounded">
+                      <a 
+                        href={item.url || '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="block hover:bg-white/5 -mx-2 px-2 py-1 rounded cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          if (!item.url || item.url === '#') {
+                            e.preventDefault();
+                            window.open('https://www.reuters.com', '_blank');
+                          }
+                        }}
+                      >
                         <div className="text-xs ghost">{item.datetime} · {item.source}</div>
                         <div className="text-sm hover:text-cyan-400 transition-colors">{item.headline}</div>
                       </a>
@@ -321,13 +332,23 @@ export default function ReportContent() {
                   )) : (
                     <>
                       <li className="py-2">
-                        <a href="https://www.reuters.com" target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -m-2 p-2 rounded">
+                        <a 
+                          href="https://www.reuters.com" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="block hover:bg-white/5 -mx-2 px-2 py-1 rounded cursor-pointer transition-colors"
+                        >
                           <div className="text-xs ghost">Just now · Reuters</div>
                           <div className="text-sm hover:text-cyan-400 transition-colors">{ticker} stock analysis and market outlook</div>
                         </a>
                       </li>
                       <li className="py-2">
-                        <a href="https://www.bloomberg.com" target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -m-2 p-2 rounded">
+                        <a 
+                          href="https://www.bloomberg.com" 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="block hover:bg-white/5 -mx-2 px-2 py-1 rounded cursor-pointer transition-colors"
+                        >
                           <div className="text-xs ghost">2 hours ago · Bloomberg</div>
                           <div className="text-sm hover:text-cyan-400 transition-colors">Analysts update {ticker} estimates</div>
                         </a>
