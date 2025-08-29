@@ -97,7 +97,7 @@ export default function NewsContent() {
                 <h3 className="font-semibold mb-2">{article.headline}</h3>
                 <p className="text-sm ghost mb-3">{article.summary}</p>
                 <a 
-                  href={article.url || 'https://www.reuters.com'} 
+                  href={article.url} 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
@@ -112,14 +112,15 @@ export default function NewsContent() {
                   <h3 className="font-semibold mb-2">Fed Minutes Suggest Slower Pace of Rate Cuts in 2025</h3>
                   <p className="text-sm ghost mb-3">Federal Reserve officials indicated a more cautious approach to monetary easing amid persistent inflation concerns...</p>
                   <a 
-                    href="https://www.reuters.com/markets/" 
+                    href="https://www.reuters.com/markets/us/" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
                   >
                     Read more →
                   </a>
                 </article>
+                
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">3 hours ago · Bloomberg</div>
                   <h3 className="font-semibold mb-2">Tech Giants Lead Market Rally on AI Optimism</h3>
@@ -128,11 +129,12 @@ export default function NewsContent() {
                     href="https://www.bloomberg.com/technology/" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
                   >
                     Read more →
                   </a>
                 </article>
+                
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">4 hours ago · WSJ</div>
                   <h3 className="font-semibold mb-2">China Economic Data Shows Mixed Recovery Signals</h3>
@@ -141,24 +143,26 @@ export default function NewsContent() {
                     href="https://www.wsj.com/world/china/" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
                   >
                     Read more →
                   </a>
                 </article>
+                
                 <article className="news-card p-4 rounded-xl">
-                  <div className="text-xs ghost mb-2">5 hours ago · FT</div>
+                  <div className="text-xs ghost mb-2">5 hours ago · Financial Times</div>
                   <h3 className="font-semibold mb-2">European Banks Report Strong Q4 Earnings</h3>
                   <p className="text-sm ghost mb-3">Major European lenders beat expectations on higher interest income and lower provisions...</p>
                   <a 
                     href="https://www.ft.com/companies/banks" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
                   >
                     Read more →
                   </a>
                 </article>
+                
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">6 hours ago · CNBC</div>
                   <h3 className="font-semibold mb-2">Oil Prices Slide on Demand Concerns</h3>
@@ -167,20 +171,21 @@ export default function NewsContent() {
                     href="https://www.cnbc.com/energy/" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
                   >
                     Read more →
                   </a>
                 </article>
+                
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">7 hours ago · MarketWatch</div>
                   <h3 className="font-semibold mb-2">Bitcoin Consolidates Below $100k Resistance</h3>
                   <p className="text-sm ghost mb-3">Cryptocurrency markets pause after recent rally as traders await regulatory clarity...</p>
                   <a 
-                    href="https://www.marketwatch.com/investing/cryptocurrency" 
+                    href="https://www.marketwatch.com/investing/cryptocurrency/" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 inline-block"
                   >
                     Read more →
                   </a>
