@@ -1,30 +1,31 @@
-export default function Navigation({ currentPage, setPage }) {
+'use client'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+
+export default function Navigation() {
+  const pathname = usePathname()
+  
   return (
     <nav className="sticky top-0 z-50 backdrop-blur-md bg-black/20 border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <div className="text-xl font-bold text-white">ValuationPro</div>
+            <Link href="/" className="text-xl font-bold text-white">ValuationPro</Link>
             <div className="hidden md:flex space-x-6">
-              <button
-                onClick={() => setPage('home')}
-                className={`transition ${currentPage === 'home' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}`}
-              >
+              <Link href="/" className={pathname === '/' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}>
                 Home
-              </button>
-              <button
-                onClick={() => setPage('report')}
-                className={`transition ${currentPage === 'report' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}`}
-              >
+              </Link>
+              <Link href="/report" className={pathname === '/report' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}>
                 Report
-              </button>
-              <button
-                onClick={() => setPage('news')}
-                className={`transition ${currentPage === 'news' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}`}
-              >
+              </Link>
+              <Link href="/news" className={pathname === '/news' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'}>
                 News
-              </button>
+              </Link>
             </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <span className="text-xs ghost hidden md:inline">API: Connected</span>
+            <div className="w-2 h-2 bg-green-500 rounded-full market-badge"></div>
           </div>
         </div>
       </div>
