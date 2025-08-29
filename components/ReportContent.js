@@ -8,6 +8,7 @@ import { ErrorBoundary } from './ErrorBoundary'
 export default function ReportContent() {
   const [stockData, setStockData] = useState(null)
   const [ticker, setTicker] = useState('GOOGL')
+  const [inputTicker, setInputTicker] = useState('')
   const [loading, setLoading] = useState(false)
   const [chartsInitialized, setChartsInitialized] = useState(false)
 
@@ -20,15 +21,14 @@ export default function ReportContent() {
     setChartsInitialized(false)
     
     try {
-      const data = await fetchStockData(symbol)
+      const data = await fetchStockData(symbol.toUpperCase())
       setStockData(data)
-      setTicker(symbol)
+      setTicker(symbol.toUpperCase())
     } catch (error) {
       console.error('Error loading stock data:', error)
-      // Set fallback data to prevent crashes
       setStockData({
-        ticker: symbol,
-        name: 'Stock Data',
+        ticker: symbol.toUpperCase(),
+        name: `${symbol.toUpperCase()} Inc.`,
         price: 0,
         marketCap: 'N/A',
         forwardPE: 'N/A',
@@ -47,6 +47,14 @@ export default function ReportContent() {
     setLoading(false)
   }
 
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (inputTicker.trim()) {
+      loadStockData(inputTicker.trim())
+      setInputTicker('')
+    }
+  }
+
   // Initialize charts after data is loaded and DOM is ready
   useEffect(() => {
     if (stockData && !chartsInitialized) {
@@ -63,13 +71,19 @@ export default function ReportContent() {
     }
   }, [stockData, chartsInitialized])
 
+  // Quick ticker buttons
+  const quickTickers = ['GOOGL', 'MSFT', 'AAPL', 'AMZN', 'NVDA', 'CRM']
+
   if (loading) {
     return (
       <>
         <Navigation />
         <div className="max-w-7xl mx-auto px-4 py-5">
           <div className="card p-8 text-center">
-            <div className="text-lg">Loading stock data...</div>
+            <div className="text-lg">Loading {ticker} data...</div>
+            <div className="mt-4">
+              <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
           </div>
         </div>
       </>
@@ -81,11 +95,48 @@ export default function ReportContent() {
       <Navigation />
       <ErrorBoundary fallback="Report failed to load. Please try refreshing the page.">
         <div className="max-w-7xl mx-auto px-4 py-5">
+          {/* Ticker Search Header */}
+          <div className="mb-6">
+            <div className="card p-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <form onSubmit={handleSearch} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={inputTicker}
+                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                    placeholder="Enter ticker (e.g., MSFT)"
+                    className="px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
+                  />
+                  <button 
+                    type="submit" 
+                    className="btn-primary px-4 py-2 rounded-lg"
+                    disabled={loading}
+                  >
+                    Analyze
+                  </button>
+                </form>
+                
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm ghost">Quick:</span>
+                  {quickTickers.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`chip px-2 py-1 text-xs ${ticker === t ? 'bg-cyan-400/20 text-cyan-400' : 'hover:bg-white/10'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-3">
                 <h1 id="title" className="text-xl font-semibold tracking-wide">
-                  {stockData?.name || 'Alphabet Inc.'} ({ticker})
+                  {stockData?.name || 'Company Name'} ({ticker})
                 </h1>
                 <span className="ghost text-sm">Updated: Just now</span>
               </div>
@@ -123,7 +174,7 @@ export default function ReportContent() {
                 </div>
                 <div className="card p-4">
                   <div className="font-medium mb-2">Quality Radar</div>
-                  <div id="qualityRadar" className="chart"></div>
+                  <div id="qualityRadar" class="chart"></div>
                 </div>
               </ErrorBoundary>
             </aside>
@@ -136,24 +187,24 @@ export default function ReportContent() {
                     <div className="text-sm ghost">Key Stats</div>
                   </div>
                   <p id="aboutText" className="text-sm mt-2 leading-relaxed">
-                    {stockData?.description || 'Alphabet operates through Google Search & YouTube advertising, with Google Cloud accelerating growth. The company continues investing in generative AI and infrastructure. Business spans search, video, cloud, Android and emerging projects.'}
+                    {stockData?.description || 'Company description not available.'}
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
                     <div className="chip px-2 py-2 text-sm">
                       <div className="ghost text-xs">Market Cap</div>
-                      <div id="stat-cap" className="font-medium">${stockData?.marketCap || '2.25T'}</div>
+                      <div id="stat-cap" className="font-medium">${stockData?.marketCap || 'N/A'}</div>
                     </div>
                     <div className="chip px-2 py-2 text-sm">
                       <div className="ghost text-xs">Forward P/E</div>
-                      <div id="stat-fpe" className="font-medium">{stockData?.forwardPE || '24.8'}</div>
+                      <div id="stat-fpe" className="font-medium">{stockData?.forwardPE || 'N/A'}</div>
                     </div>
                     <div className="chip px-2 py-2 text-sm">
                       <div className="ghost text-xs">TTM P/E</div>
-                      <div id="stat-ttmpe" className="font-medium">{stockData?.ttmPE || '26.2'}</div>
+                      <div id="stat-ttmpe" className="font-medium">{stockData?.ttmPE || 'N/A'}</div>
                     </div>
                     <div className="chip px-2 py-2 text-sm">
                       <div className="ghost text-xs">Sector</div>
-                      <div id="stat-sector" className="font-medium">{stockData?.sector || 'Communication Services'}</div>
+                      <div id="stat-sector" className="font-medium">{stockData?.sector || 'Unknown'}</div>
                     </div>
                   </div>
                 </div>
@@ -163,7 +214,16 @@ export default function ReportContent() {
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-medium">Valuation (Trader Model)</div>
-                    <div className="text-sm ghost">Current Price: <span id="currentPrice">${stockData?.price || '207.14'}</span></div>
+                    <div className="text-sm ghost">Current Price: <span id="currentPrice">${stockData?.price || '0.00'}</span></div>
+                  </div>
+                  {/* MSFT-Style Bands Info */}
+                  <div className="flex items-center gap-2 text-xs mb-2">
+                    <span className="chip px-2 py-1">
+                      EPS: {stockData?.eps?.values?.join(' / ') || '0 / 0 / 0'}
+                    </span>
+                    <span className="chip px-2 py-1">
+                      Bands (25th/50th/75th): {stockData?.peBands?.low}× / {stockData?.peBands?.mid}× / {stockData?.peBands?.high}×
+                    </span>
                   </div>
                   <div id="valuationChart" className="chart-lg"></div>
                 </div>
@@ -201,17 +261,29 @@ export default function ReportContent() {
                   <div>
                     <div className="ghost text-sm mb-1">Strengths</div>
                     <ul id="strengthList" className="list-disc pl-5 space-y-1 text-sm">
-                      <li>Search & YouTube ecosystem moat, stable ad demand</li>
-                      <li>Cloud profitability improving with structural growth</li>
-                      <li>Strong cash flow and R&D investment, complete AI positioning</li>
+                      {stockData?.strengths?.map((strength, i) => (
+                        <li key={i}>{strength}</li>
+                      )) || (
+                        <>
+                          <li>Market leadership and competitive moats</li>
+                          <li>Strong financial position and cash flows</li>
+                          <li>Innovation and R&D investment</li>
+                        </>
+                      )}
                     </ul>
                   </div>
                   <div>
                     <div className="ghost text-sm mb-1">Risks / Weaknesses</div>
                     <ul id="riskList" className="list-disc pl-5 space-y-1 text-sm">
-                      <li>Antitrust and privacy regulatory pressure persists</li>
-                      <li>Ad business macro-sensitive; social/commerce competition intense</li>
-                      <li>Generative AI changing search behavior, may dilute traditional monetization</li>
+                      {stockData?.risks?.map((risk, i) => (
+                        <li key={i}>{risk}</li>
+                      )) || (
+                        <>
+                          <li>Regulatory and compliance challenges</li>
+                          <li>Market competition and disruption risks</li>
+                          <li>Economic and cyclical headwinds</li>
+                        </>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -225,24 +297,30 @@ export default function ReportContent() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-medium">Latest News</div>
                   <div id="newsCount" className="text-sm ghost">
-                    {stockData?.news?.length || 2} items
+                    {stockData?.news?.length || 0} items
                   </div>
                 </div>
                 <ul id="newsList" className="divide-y divide-white/10">
                   {stockData?.news?.length > 0 ? stockData.news.map((item, i) => (
                     <li key={i} className="py-2">
-                      <div className="text-xs ghost">{item.datetime} · {item.source}</div>
-                      <div className="text-sm">{item.headline}</div>
+                      <a href={item.url || '#'} target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -m-2 p-2 rounded">
+                        <div className="text-xs ghost">{item.datetime} · {item.source}</div>
+                        <div className="text-sm hover:text-cyan-400 transition-colors">{item.headline}</div>
+                      </a>
                     </li>
                   )) : (
                     <>
                       <li className="py-2">
-                        <div className="text-xs ghost">Just now · Reuters</div>
-                        <div className="text-sm">Alphabet unveils new AI features across Google products</div>
+                        <a href="https://www.reuters.com" target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -m-2 p-2 rounded">
+                          <div className="text-xs ghost">Just now · Reuters</div>
+                          <div className="text-sm hover:text-cyan-400 transition-colors">{ticker} stock analysis and market outlook</div>
+                        </a>
                       </li>
                       <li className="py-2">
-                        <div className="text-xs ghost">2 hours ago · Bloomberg</div>
-                        <div className="text-sm">Analyst lifts GOOGL estimates on Cloud margins</div>
+                        <a href="https://www.bloomberg.com" target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -m-2 p-2 rounded">
+                          <div className="text-xs ghost">2 hours ago · Bloomberg</div>
+                          <div className="text-sm hover:text-cyan-400 transition-colors">Analysts update {ticker} estimates</div>
+                        </a>
                       </li>
                     </>
                   )}
