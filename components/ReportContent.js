@@ -24,11 +24,21 @@ export default function ReportContent() {
       const data = await fetchStockData(symbol.toUpperCase())
       setStockData(data)
       setTicker(symbol.toUpperCase())
+      
+      // Clear existing charts
+      const chartIds = ['band-spark', 'qualityRadar', 'valuationChart', 'peersChart', 'segmentPie']
+      chartIds.forEach(id => {
+        const element = document.getElementById(id)
+        if (element) {
+          element.innerHTML = '' // Clear the chart
+        }
+      })
+      
     } catch (error) {
       console.error('Error loading stock data:', error)
       setStockData({
         ticker: symbol.toUpperCase(),
-        name: `${symbol.toUpperCase()} Inc.`,
+        name: `${symbol.toUpperCase()} Corporation`,
         price: 0,
         marketCap: 'N/A',
         forwardPE: 'N/A',
