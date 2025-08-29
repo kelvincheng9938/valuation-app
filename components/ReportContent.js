@@ -57,7 +57,7 @@ export default function ReportContent() {
 
   // Initialize charts after data is loaded and DOM is ready
   useEffect(() => {
-    if (stockData && !chartsInitialized) {
+    if (stockData) {
       const timer = setTimeout(async () => {
         try {
           await initCharts(stockData)
@@ -69,7 +69,7 @@ export default function ReportContent() {
 
       return () => clearTimeout(timer)
     }
-  }, [stockData, chartsInitialized])
+  }, [stockData]) // Remove chartsInitialized dependency to allow re-initialization
 
   // Quick ticker buttons
   const quickTickers = ['GOOGL', 'MSFT', 'AAPL', 'AMZN', 'NVDA', 'CRM']
