@@ -1,7 +1,9 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  env: {
+    FINNHUB_API_KEY: process.env.FINNHUB_API_KEY,
+    FMP_API_KEY: process.env.FMP_API_KEY,
+  }
+}
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
-
-export default nextConfig;
+module.exports = nextConfig
