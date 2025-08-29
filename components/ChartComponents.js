@@ -1,352 +1,305 @@
-'use client';
+'use client'
+import { useEffect, useState } from 'react'
+import Navigation from './Navigation'
+import { initCharts } from './ChartComponents'
+import { fetchStockData } from '@/lib/api'
+import { ErrorBoundary } from './ErrorBoundary'
 
-let echartsLib = null;
+export default function ReportContent() {
+  const [stockData, setStockData] = useState(null)
+  const [ticker, setTicker] = useState('GOOGL')
+  const [inputTicker, setInputTicker] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [updateKey, setUpdateKey] = useState(0) // Force re-render
 
-export async function initCharts(stockData) {
-  if (typeof window === 'undefined') return;
+  useEffect(() => {
+    loadStockData('GOOGL')
+  }, [])
 
-  try {
-    // More robust dynamic import with error handling
-    if (!echartsLib) {
-      const echartsModule = await import('echarts');
-      echartsLib = echartsModule.default || echartsModule;
-    }
-    const echarts = echartsLib;
-
-    // Clear any existing instances first
-    const instances = [];
-    const byId = (id) => document.getElementById(id);
-
-    // Helper to safely create chart
-    const safeCreateChart = (elementId, options) => {
-      const element = byId(elementId);
-      if (!element) return null;
+  const loadStockData = async (symbol) => {
+    setLoading(true)
+    
+    try {
+      const data = await fetchStockData(symbol.toUpperCase())
+      setStockData(data)
+      setTicker(symbol.toUpperCase())
+      setUpdateKey(prev => prev + 1) // Force component update
       
-      try {
-        // Dispose existing chart if any
-        const existingChart = echarts.getInstanceByDom(element);
-        if (existingChart) {
-          existingChart.dispose();
+      // Clear and reinitialize charts
+      setTimeout(async () => {
+        try {
+          await initCharts(data)
+        } catch (error) {
+          console.error('Error initializing charts:', error)
         }
-        
-        const instance = echarts.init(element);
-        instance.setOption(options);
-        instances.push(instance);
-        return instance;
-      } catch (error) {
-        console.error(`Error creating chart ${elementId}:`, error);
-        return null;
-      }
-    };
-
-    // ===== Sparkline（Value Score 小圖）=====
-    safeCreateChart('band-spark', {
-      grid: { left: 0, right: 0, top: 5, bottom: 0 },
-      xAxis: { type: 'category', show: false, data: [0,1,2] },
-      yAxis: { type: 'value', show: false },
-      series: [{
-        type: 'line',
-        smooth: true,
-        data: [22, 25, 30],
-        areaStyle: { color: 'rgba(6,182,212,0.3)' },
-        lineStyle: { color: '#06b6d4', width: 2 },
-        showSymbol: false
-      }]
-    });
-
-    // ===== Radar（Quality Radar）=====
-    const s = stockData?.scores || { value: 8.2, growth: 7.6, profit: 9.0, momentum: 6.9 };
-    safeCreateChart('qualityRadar', {
-      radar: {
-        indicator: [
-          { name: 'Value', max: 10 },
-          { name: 'Growth', max: 10 },
-          { name: 'Profit', max: 10 },
-          { name: 'Momentum', max: 10 }
-        ],
-        radius: '65%',
-        axisName: { color: '#9fb0c3' }
-      },
-      series: [{
-        type: 'radar',
-        data: [{ 
-          value: [s.value, s.growth, s.profit, s.momentum], 
-          areaStyle: { opacity: .25, color: '#06b6d4' } 
-        }]
-      }]
-    });
-
-    // ===== Valuation（Forward EPS × P/E Bands）=====
-    const eps = stockData?.eps || { years: ['2025','2026','2027'], values: [7.5,8.4,9.3] };
-    const bands = stockData?.peBands || { low: 22, mid: 25, high: 30 };
-    const current = Number(stockData?.price ?? 207.14);
-    const currentLine = eps.years.map(() => current);
-
-    const mk = (mul, color, name) => ({
-      name,
-      type: 'bar',
-      data: eps.values.map(v => +(v * mul).toFixed(1)),
-      itemStyle: { color }
-    });
-
-    safeCreateChart('valuationChart', {
-      tooltip: { trigger: 'axis' },
-      legend: {
-        data: [`Low (25th)`, `Mid (50th)`, `High (75th)`, 'Current Price'],
-        textStyle: { color: '#ffffff', fontWeight: 'bold', fontSize: 13 }
-      },
-      grid: { left: 45, right: 20, top: 10, bottom: 30 },
-      xAxis: { 
-        type: 'category', 
-        data: eps.years, 
-        axisLabel: { color: '#cfe3ff' }
-      },
-      yAxis: { 
-        type: 'value', 
-        axisLabel: { formatter: v => '
-
-    // ===== Peers（散點圖）=====
-    const peers = stockData?.peers ?? [
-      [2250, 24.8, 22, 'GOOGL'],
-      [3500, 35.0, 26, 'MSFT'],
-      [2000, 45.0, 20, 'AMZN'],
-      [1250, 28.0, 18, 'META']
-    ];
-    let labelsOn = true;
-
-    const peersChart = safeCreateChart('peersChart', {
-      tooltip: {
-        formatter: p => {
-          const [cap, pe,, name] = p.data;
-          return `${name}<br/>Cap: $${(cap/1000).toFixed(1)}T<br/>Fwd P/E: ${pe}`;
-        }
-      },
-      grid: { left: 52, right: 52, top: 10, bottom: 40 },
-      xAxis: {
-        type: 'value',
-        name: 'Market Cap ($B)',
-        nameLocation: 'middle',
-        nameGap: 25,
-        axisLine: { lineStyle: { color: '#6b7c91' } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.06)' } }
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Forward P/E',
-        nameLocation: 'middle',
-        nameGap: 32,
-        axisLine: { lineStyle: { color: '#6b7c91' } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.06)' } }
-      },
-      series: [{
-        type: 'scatter',
-        symbolSize: d => Math.max(8, Math.sqrt(d[2] || 16) * 2),
-        data: peers,
-        label: {
-          show: labelsOn,
-          formatter: p => p.data[3],
-          color: '#e6eef6',
-          fontSize: 11
-        },
-        itemStyle: { opacity: .9, color: '#06b6d4' }
-      }]
-    });
-
-    const btn = document.getElementById('toggleLabelsBtn');
-    if (btn && peersChart) {
-      btn.onclick = () => {
-        labelsOn = !labelsOn;
-        btn.textContent = `Labels: ${labelsOn ? 'ON' : 'OFF'}`;
-        peersChart.setOption({ series: [{ label: { show: labelsOn } }] });
-      };
+      }, 300)
+      
+    } catch (error) {
+      console.error('Error loading stock data:', error)
     }
-
-    // ===== Segment Pie（部門收入）=====
-    const seg = stockData?.segments ?? [
-      { name: 'Search & Other', value: 56, itemStyle: { color: '#3b82f6' } },
-      { name: 'YouTube Ads',   value: 12, itemStyle: { color: '#10b981' } },
-      { name: 'Google Cloud',  value: 11, itemStyle: { color: '#f59e0b' } },
-      { name: 'Network',       value: 15, itemStyle: { color: '#8b5cf6' } },
-      { name: 'Other Bets',    value:  6, itemStyle: { color: '#ef4444' } }
-    ];
-
-    safeCreateChart('segmentPie', {
-      legend: { top: 0, textStyle: { color: '#e6eef6' } },
-      tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
-      series: [{
-        type: 'pie',
-        radius: ['45%','75%'],
-        center: ['50%','58%'],
-        label: { color: '#e6eef6', fontSize: 12, formatter: '{b}\n{d}%' },
-        data: seg
-      }]
-    });
-
-    // ===== 安全 resize =====
-    const onResize = () => {
-      instances.forEach(instance => {
-        if (instance && !instance.isDisposed()) {
-          try {
-            instance.resize();
-          } catch (error) {
-            console.error('Error resizing chart:', error);
-          }
-        }
-      });
-    };
     
-    // Remove existing resize listener to prevent duplicates
-    window.removeEventListener('resize', onResize);
-    window.addEventListener('resize', onResize, { passive: true });
-
-  } catch (error) {
-    console.error('Error initializing charts:', error);
-    // Show fallback UI or error message
-    const errorElements = ['band-spark', 'qualityRadar', 'valuationChart', 'peersChart', 'segmentPie'];
-    errorElements.forEach(id => {
-      const element = document.getElementById(id);
-      if (element) {
-        element.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9fb0c3;font-size:14px;">Chart loading failed</div>';
-      }
-    });
+    setLoading(false)
   }
-} + v, color: '#cfe3ff' },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.08)' } }
-      },
-      series: [
-        {
-          name: 'Low (25th)',
-          type: 'bar',
-          data: eps.values.map(v => +(v * bands.low).toFixed(2)),
-          barGap: 0,
-          itemStyle: { color: '#3b82f6' }
-        },
-        {
-          name: 'Mid (50th)',
-          type: 'bar', 
-          data: eps.values.map(v => +(v * bands.mid).toFixed(2)),
-          itemStyle: { color: '#10b981' }
-        },
-        {
-          name: 'High (75th)',
-          type: 'bar',
-          data: eps.values.map(v => +(v * bands.high).toFixed(2)), 
-          itemStyle: { color: '#f59e0b' }
-        },
-        { 
-          name: 'Current Price', 
-          type: 'line', 
-          data: currentLine, 
-          symbol: 'none', 
-          z: 5, 
-          lineStyle: { width: 2, color: '#ff6b6b' } 
-        }
-      ]
-    });
 
-    // ===== Peers（散點圖）=====
-    const peers = stockData?.peers ?? [
-      [2250, 24.8, 22, 'GOOGL'],
-      [3500, 35.0, 26, 'MSFT'],
-      [2000, 45.0, 20, 'AMZN'],
-      [1250, 28.0, 18, 'META']
-    ];
-    let labelsOn = true;
-
-    const peersChart = safeCreateChart('peersChart', {
-      tooltip: {
-        formatter: p => {
-          const [cap, pe,, name] = p.data;
-          return `${name}<br/>Cap: $${(cap/1000).toFixed(1)}T<br/>Fwd P/E: ${pe}`;
-        }
-      },
-      grid: { left: 52, right: 52, top: 10, bottom: 40 },
-      xAxis: {
-        type: 'value',
-        name: 'Market Cap ($B)',
-        nameLocation: 'middle',
-        nameGap: 25,
-        axisLine: { lineStyle: { color: '#6b7c91' } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.06)' } }
-      },
-      yAxis: {
-        type: 'value',
-        name: 'Forward P/E',
-        nameLocation: 'middle',
-        nameGap: 32,
-        axisLine: { lineStyle: { color: '#6b7c91' } },
-        splitLine: { lineStyle: { color: 'rgba(255,255,255,.06)' } }
-      },
-      series: [{
-        type: 'scatter',
-        symbolSize: d => Math.max(8, Math.sqrt(d[2] || 16) * 2),
-        data: peers,
-        label: {
-          show: labelsOn,
-          formatter: p => p.data[3],
-          color: '#e6eef6',
-          fontSize: 11
-        },
-        itemStyle: { opacity: .9, color: '#06b6d4' }
-      }]
-    });
-
-    const btn = document.getElementById('toggleLabelsBtn');
-    if (btn && peersChart) {
-      btn.onclick = () => {
-        labelsOn = !labelsOn;
-        btn.textContent = `Labels: ${labelsOn ? 'ON' : 'OFF'}`;
-        peersChart.setOption({ series: [{ label: { show: labelsOn } }] });
-      };
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (inputTicker.trim()) {
+      loadStockData(inputTicker.trim())
+      setInputTicker('')
     }
-
-    // ===== Segment Pie（部門收入）=====
-    const seg = stockData?.segments ?? [
-      { name: 'Search & Other', value: 56, itemStyle: { color: '#3b82f6' } },
-      { name: 'YouTube Ads',   value: 12, itemStyle: { color: '#10b981' } },
-      { name: 'Google Cloud',  value: 11, itemStyle: { color: '#f59e0b' } },
-      { name: 'Network',       value: 15, itemStyle: { color: '#8b5cf6' } },
-      { name: 'Other Bets',    value:  6, itemStyle: { color: '#ef4444' } }
-    ];
-
-    safeCreateChart('segmentPie', {
-      legend: { top: 0, textStyle: { color: '#e6eef6' } },
-      tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
-      series: [{
-        type: 'pie',
-        radius: ['45%','75%'],
-        center: ['50%','58%'],
-        label: { color: '#e6eef6', fontSize: 12, formatter: '{b}\n{d}%' },
-        data: seg
-      }]
-    });
-
-    // ===== 安全 resize =====
-    const onResize = () => {
-      instances.forEach(instance => {
-        if (instance && !instance.isDisposed()) {
-          try {
-            instance.resize();
-          } catch (error) {
-            console.error('Error resizing chart:', error);
-          }
-        }
-      });
-    };
-    
-    // Remove existing resize listener to prevent duplicates
-    window.removeEventListener('resize', onResize);
-    window.addEventListener('resize', onResize, { passive: true });
-
-  } catch (error) {
-    console.error('Error initializing charts:', error);
-    // Show fallback UI or error message
-    const errorElements = ['band-spark', 'qualityRadar', 'valuationChart', 'peersChart', 'segmentPie'];
-    errorElements.forEach(id => {
-      const element = document.getElementById(id);
-      if (element) {
-        element.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9fb0c3;font-size:14px;">Chart loading failed</div>';
-      }
-    });
   }
+
+  // Quick ticker buttons
+  const quickTickers = ['GOOGL', 'MSFT', 'AAPL', 'AMZN', 'NVDA', 'CRM']
+
+  if (loading) {
+    return (
+      <>
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 py-5">
+          <div className="card p-8 text-center">
+            <div className="text-lg">Loading {ticker} data...</div>
+            <div className="mt-4">
+              <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Navigation />
+      <ErrorBoundary fallback="Report failed to load. Please try refreshing the page.">
+        <div className="max-w-7xl mx-auto px-4 py-5" key={updateKey}>
+          {/* Ticker Search Header */}
+          <div className="mb-6">
+            <div className="card p-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+                <form onSubmit={handleSearch} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={inputTicker}
+                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                    placeholder="Enter ticker (e.g., MSFT)"
+                    className="px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
+                  />
+                  <button 
+                    type="submit" 
+                    className="btn-primary px-4 py-2 rounded-lg"
+                    disabled={loading}
+                  >
+                    Analyze
+                  </button>
+                </form>
+                
+                <div className="flex flex-wrap gap-2">
+                  <span className="text-sm ghost">Quick:</span>
+                  {quickTickers.map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`chip px-2 py-1 text-xs ${ticker === t ? 'bg-cyan-400/20 text-cyan-400' : 'hover:bg-white/10'}`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <header className="mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-baseline gap-3">
+                <h1 className="text-xl font-semibold tracking-wide">
+                  {stockData?.name || 'Loading...'} ({ticker})
+                </h1>
+                <span className="ghost text-sm">Updated: Just now</span>
+              </div>
+              <div className="ghost text-sm">Theme: Simple / Wall-St</div>
+            </div>
+          </header>
+
+          <section className="grid grid-cols-12 gap-4 relative">
+            <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-20 self-start z-0 space-y-3">
+              <ErrorBoundary fallback="Score display failed">
+                <div className="card kpi p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm ghost">Value Score</div>
+                    <div className="text-lg font-semibold">{stockData?.scores?.value?.toFixed(1) || '0.0'}</div>
+                  </div>
+                  <div id="band-spark" className="mt-3 h-10 w-full"></div>
+                </div>
+                <div className="card kpi p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm ghost">Growth Score</div>
+                    <div className="text-lg font-semibold">{stockData?.scores?.growth?.toFixed(1) || '0.0'}</div>
+                  </div>
+                </div>
+                <div className="card kpi p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm ghost">Profitability</div>
+                    <div className="text-lg font-semibold">{stockData?.scores?.profit?.toFixed(1) || '0.0'}</div>
+                  </div>
+                </div>
+                <div className="card kpi p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm ghost">Momentum</div>
+                    <div className="text-lg font-semibold">{stockData?.scores?.momentum?.toFixed(1) || '0.0'}</div>
+                  </div>
+                </div>
+                <div className="card p-4">
+                  <div className="font-medium mb-2">Quality Radar</div>
+                  <div id="qualityRadar" className="chart"></div>
+                </div>
+              </ErrorBoundary>
+            </aside>
+
+            <div className="col-span-12 lg:col-span-9 space-y-4 z-0">
+              <ErrorBoundary fallback="Company info failed to load">
+                <div className="card p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">About the Company</div>
+                    <div className="text-sm ghost">Key Stats</div>
+                  </div>
+                  <p className="text-sm mt-2 leading-relaxed">
+                    {stockData?.description || 'Loading company information...'}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
+                    <div className="chip px-2 py-2 text-sm">
+                      <div className="ghost text-xs">Market Cap</div>
+                      <div className="font-medium">${stockData?.marketCap || 'N/A'}</div>
+                    </div>
+                    <div className="chip px-2 py-2 text-sm">
+                      <div className="ghost text-xs">Forward P/E</div>
+                      <div className="font-medium">{stockData?.forwardPE || 'N/A'}</div>
+                    </div>
+                    <div className="chip px-2 py-2 text-sm">
+                      <div className="ghost text-xs">TTM P/E</div>
+                      <div className="font-medium">{stockData?.ttmPE || 'N/A'}</div>
+                    </div>
+                    <div className="chip px-2 py-2 text-sm">
+                      <div className="ghost text-xs">Sector</div>
+                      <div className="font-medium">{stockData?.sector || 'Unknown'}</div>
+                    </div>
+                  </div>
+                </div>
+              </ErrorBoundary>
+
+              <ErrorBoundary fallback="Valuation chart failed to load">
+                <div className="card p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">Valuation (Trader Model)</div>
+                    <div className="text-sm ghost">Current Price: ${stockData?.price?.toFixed(2) || '0.00'}</div>
+                  </div>
+                  {/* MSFT-Style Bands Info */}
+                  <div className="flex items-center gap-2 text-xs mb-2">
+                    <span className="chip px-2 py-1">
+                      EPS: {stockData?.eps?.values?.join(' / ') || '0 / 0 / 0'}
+                    </span>
+                    <span className="chip px-2 py-1">
+                      Bands (25th/50th/75th): {stockData?.peBands?.low}× / {stockData?.peBands?.mid}× / {stockData?.peBands?.high}×
+                    </span>
+                  </div>
+                  <div id="valuationChart" className="chart-lg"></div>
+                </div>
+              </ErrorBoundary>
+            </div>
+          </section>
+
+          <section className="grid grid-cols-12 gap-4 mt-4">
+            <div className="col-span-12 lg:col-span-8">
+              <ErrorBoundary fallback="Peers chart failed to load">
+                <div className="card p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">Peers – Forward P/E vs Market Cap</div>
+                    <button id="toggleLabelsBtn" className="btn text-xs">Labels: ON</button>
+                  </div>
+                  <div id="peersChart" className="chart"></div>
+                </div>
+              </ErrorBoundary>
+            </div>
+            <aside className="col-span-12 lg:col-span-4">
+              <ErrorBoundary fallback="Segment chart failed to load">
+                <div className="card p-4">
+                  <div className="font-medium mb-2">Income by Segment</div>
+                  <div id="segmentPie" className="chart"></div>
+                </div>
+              </ErrorBoundary>
+            </aside>
+          </section>
+
+          <section className="mt-4">
+            <ErrorBoundary fallback="Strengths & risks section failed">
+              <div className="card p-4">
+                <div className="font-medium mb-2">Strengths & Risks</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <div className="ghost text-sm mb-1">Strengths</div>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      {stockData?.strengths?.map((strength, i) => (
+                        <li key={i}>{strength}</li>
+                      )) || (
+                        <li>Loading strengths...</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="ghost text-sm mb-1">Risks / Weaknesses</div>
+                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                      {stockData?.risks?.map((risk, i) => (
+                        <li key={i}>{risk}</li>
+                      )) || (
+                        <li>Loading risks...</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </ErrorBoundary>
+          </section>
+
+          <section className="mt-4">
+            <ErrorBoundary fallback="News section failed to load">
+              <div className="card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Latest News</div>
+                  <div className="text-sm ghost">
+                    {stockData?.news?.length || 0} items
+                  </div>
+                </div>
+                <ul className="divide-y divide-white/10">
+                  {stockData?.news?.length > 0 ? stockData.news.map((item, i) => (
+                    <li key={i} className="py-2">
+                      <a href={item.url} target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -mx-2 px-2 py-1 rounded cursor-pointer transition-colors">
+                        <div className="text-xs ghost">{item.datetime} · {item.source}</div>
+                        <div className="text-sm hover:text-cyan-400 transition-colors">{item.headline}</div>
+                      </a>
+                    </li>
+                  )) : (
+                    <>
+                      <li className="py-2">
+                        <a href="https://www.reuters.com/technology/" target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -mx-2 px-2 py-1 rounded cursor-pointer transition-colors">
+                          <div className="text-xs ghost">Just now · Reuters</div>
+                          <div className="text-sm hover:text-cyan-400 transition-colors">{ticker} stock analysis and market outlook</div>
+                        </a>
+                      </li>
+                      <li className="py-2">
+                        <a href="https://www.bloomberg.com/technology/" target="_blank" rel="noopener noreferrer" className="block hover:bg-white/5 -mx-2 px-2 py-1 rounded cursor-pointer transition-colors">
+                          <div className="text-xs ghost">2 hours ago · Bloomberg</div>
+                          <div className="text-sm hover:text-cyan-400 transition-colors">Analysts update {ticker} estimates</div>
+                        </a>
+                      </li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </ErrorBoundary>
+          </section>
+        </div>
+      </ErrorBoundary>
+    </>
+  )
 }
