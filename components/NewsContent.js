@@ -6,18 +6,41 @@ import { fetchMarketData, fetchNews } from '@/lib/api'
 export default function NewsContent() {
   const [marketData, setMarketData] = useState(null)
   const [news, setNews] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadData()
   }, [])
 
   const loadData = async () => {
-    const [market, newsData] = await Promise.all([
-      fetchMarketData(),
-      fetchNews()
-    ])
-    setMarketData(market)
-    setNews(newsData)
+    try {
+      const [market, newsData] = await Promise.all([
+        fetchMarketData(),
+        fetchNews()
+      ])
+      setMarketData(market)
+      setNews(newsData)
+    } catch (error) {
+      console.error('Error loading news data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <>
+        <Navigation />
+        <div className="max-w-7xl mx-auto px-4 py-5">
+          <div className="card p-8 text-center">
+            <div className="text-lg">Loading market news...</div>
+            <div className="mt-4">
+              <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+          </div>
+        </div>
+      </>
+    )
   }
 
   return (
@@ -72,29 +95,95 @@ export default function NewsContent() {
               <article key={i} className="news-card p-4 rounded-xl">
                 <div className="text-xs ghost mb-2">{article.datetime} · {article.source}</div>
                 <h3 className="font-semibold mb-2">{article.headline}</h3>
-                <p className="text-sm ghost">{article.summary}</p>
-                {article.url && (
-                  <a href={article.url} target="_blank" rel="noopener" className="text-cyan-400 text-sm mt-2 inline-block hover:text-cyan-300">
-                    Read more →
-                  </a>
-                )}
+                <p className="text-sm ghost mb-3">{article.summary}</p>
+                <a 
+                  href={article.url || 'https://www.reuters.com'} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
+                >
+                  Read more →
+                </a>
               </article>
             )) : (
               <>
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">2 hours ago · Reuters</div>
                   <h3 className="font-semibold mb-2">Fed Minutes Suggest Slower Pace of Rate Cuts in 2025</h3>
-                  <p className="text-sm ghost">Federal Reserve officials indicated a more cautious approach to monetary easing amid persistent inflation concerns...</p>
+                  <p className="text-sm ghost mb-3">Federal Reserve officials indicated a more cautious approach to monetary easing amid persistent inflation concerns...</p>
+                  <a 
+                    href="https://www.reuters.com/markets/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                  >
+                    Read more →
+                  </a>
                 </article>
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">3 hours ago · Bloomberg</div>
                   <h3 className="font-semibold mb-2">Tech Giants Lead Market Rally on AI Optimism</h3>
-                  <p className="text-sm ghost">Major technology stocks pushed indices higher as investors bet on continued AI-driven growth...</p>
+                  <p className="text-sm ghost mb-3">Major technology stocks pushed indices higher as investors bet on continued AI-driven growth...</p>
+                  <a 
+                    href="https://www.bloomberg.com/technology/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                  >
+                    Read more →
+                  </a>
                 </article>
                 <article className="news-card p-4 rounded-xl">
                   <div className="text-xs ghost mb-2">4 hours ago · WSJ</div>
                   <h3 className="font-semibold mb-2">China Economic Data Shows Mixed Recovery Signals</h3>
-                  <p className="text-sm ghost">Latest indicators from China point to uneven recovery as manufacturing rebounds while property remains weak...</p>
+                  <p className="text-sm ghost mb-3">Latest indicators from China point to uneven recovery as manufacturing rebounds while property remains weak...</p>
+                  <a 
+                    href="https://www.wsj.com/world/china/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                  >
+                    Read more →
+                  </a>
+                </article>
+                <article className="news-card p-4 rounded-xl">
+                  <div className="text-xs ghost mb-2">5 hours ago · FT</div>
+                  <h3 className="font-semibold mb-2">European Banks Report Strong Q4 Earnings</h3>
+                  <p className="text-sm ghost mb-3">Major European lenders beat expectations on higher interest income and lower provisions...</p>
+                  <a 
+                    href="https://www.ft.com/companies/banks" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                  >
+                    Read more →
+                  </a>
+                </article>
+                <article className="news-card p-4 rounded-xl">
+                  <div className="text-xs ghost mb-2">6 hours ago · CNBC</div>
+                  <h3 className="font-semibold mb-2">Oil Prices Slide on Demand Concerns</h3>
+                  <p className="text-sm ghost mb-3">Crude futures fell as weak economic data raised concerns about global energy demand...</p>
+                  <a 
+                    href="https://www.cnbc.com/energy/" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                  >
+                    Read more →
+                  </a>
+                </article>
+                <article className="news-card p-4 rounded-xl">
+                  <div className="text-xs ghost mb-2">7 hours ago · MarketWatch</div>
+                  <h3 className="font-semibold mb-2">Bitcoin Consolidates Below $100k Resistance</h3>
+                  <p className="text-sm ghost mb-3">Cryptocurrency markets pause after recent rally as traders await regulatory clarity...</p>
+                  <a 
+                    href="https://www.marketwatch.com/investing/cryptocurrency" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors"
+                  >
+                    Read more →
+                  </a>
                 </article>
               </>
             )}
