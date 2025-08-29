@@ -9,17 +9,15 @@
   },
   "dependencies": {
     "next": "14.0.4",
-    "react": "^18",
-    "react-dom": "^18",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "echarts": "^5.4.3",
-    "echarts-for-react": "^3.0.2",
     "axios": "^1.6.2",
-    "dayjs": "^1.11.10",
-    "gsap": "^3.12.4"
+    "dayjs": "^1.11.10"
   },
   "devDependencies": {
     "tailwindcss": "^3.3.6",
-    "autoprefixer": "^10",
-    "postcss": "^8"
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32"
   }
 }
