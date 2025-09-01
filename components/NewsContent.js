@@ -53,37 +53,47 @@ export default function NewsContent() {
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">S&P 500</span>
-                <span className="text-xs text-green-400">+0.24%</span>
+                <span className={`text-xs ${marketData?.spy?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {marketData?.spy?.changePercent >= 0 ? '+' : ''}{marketData?.spy?.changePercent?.toFixed(2) || '0.24'}%
+                </span>
               </div>
-              <div className="text-2xl font-bold">5,982.45</div>
+              <div className="text-2xl font-bold">{marketData?.spy?.price?.toLocaleString() || '6,460.12'}</div>
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">NASDAQ</span>
-                <span className="text-xs text-green-400">+0.45%</span>
+                <span className={`text-xs ${marketData?.nasdaq?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {marketData?.nasdaq?.changePercent >= 0 ? '+' : ''}{marketData?.nasdaq?.changePercent?.toFixed(2) || '0.45'}%
+                </span>
               </div>
-              <div className="text-2xl font-bold">19,891.23</div>
+              <div className="text-2xl font-bold">{marketData?.nasdaq?.price?.toLocaleString() || '21,750.89'}</div>
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">BTC-USD</span>
-                <span className="text-xs text-green-400">+1.28%</span>
+                <span className={`text-xs ${marketData?.btc?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {marketData?.btc?.changePercent >= 0 ? '+' : ''}{marketData?.btc?.changePercent?.toFixed(2) || '1.28'}%
+                </span>
               </div>
-              <div className="text-2xl font-bold">96,234</div>
+              <div className="text-2xl font-bold">{marketData?.btc?.price?.toLocaleString() || '96,234'}</div>
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">Gold</span>
-                <span className="text-xs text-green-400">+0.18%</span>
+                <span className={`text-xs ${marketData?.gold?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {marketData?.gold?.changePercent >= 0 ? '+' : ''}{marketData?.gold?.changePercent?.toFixed(2) || '0.18'}%
+                </span>
               </div>
-              <div className="text-2xl font-bold">2,641.50</div>
+              <div className="text-2xl font-bold">{marketData?.gold?.price?.toLocaleString() || '2,641.50'}</div>
             </div>
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">Oil WTI</span>
-                <span className="text-xs text-red-400">-0.87%</span>
+                <span className={`text-xs ${marketData?.oil?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {marketData?.oil?.changePercent >= 0 ? '+' : ''}{marketData?.oil?.changePercent?.toFixed(2) || '-0.87'}%
+                </span>
               </div>
-              <div className="text-2xl font-bold">69.85</div>
+              <div className="text-2xl font-bold">{marketData?.oil?.price?.toFixed(2) || '69.85'}</div>
             </div>
           </div>
         </section>
