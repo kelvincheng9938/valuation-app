@@ -16,18 +16,6 @@ export default function ReportContent() {
   // Get available tickers (demo or live)
   const availableTickers = getAvailableTickers()
 
-  // Organize tickers by category for better UX
-  const tickerCategories = {
-    'Mega Cap Tech': ['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN'],
-    'Growth & AI': ['CRM', 'SNOW', 'PLTR', 'CRWD', 'ZM', 'SHOP'],
-    'Healthcare': ['LLY', 'ISRG'],
-    'Financial': ['HOOD', 'COIN', 'BAC'],
-    'Consumer': ['TSLA', 'NFLX', 'HD', 'MCD', 'NKE', 'KO', 'DIS'],
-    'Other': availableTickers.filter(t => 
-      !['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN', 'CRM', 'SNOW', 'PLTR', 'CRWD', 'ZM', 'SHOP', 'LLY', 'ISRG', 'HOOD', 'COIN', 'BAC', 'TSLA', 'NFLX', 'HD', 'MCD', 'NKE', 'KO', 'DIS'].includes(t)
-    )
-  }
-
   useEffect(() => {
     loadStockData('AAPL')
   }, [])
@@ -171,77 +159,145 @@ export default function ReportContent() {
             </div>
           )}
 
-          {/* Enhanced Search and Stock Selection */}
+          {/* Enhanced Ticker Search Header */}
           <div className="mb-6">
             <div className="card p-4">
-              {/* Search Bar */}
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-4">
+              <div className="space-y-4">
                 <form onSubmit={handleSearch} className="flex gap-2">
                   <input
                     type="text"
                     value={inputTicker}
                     onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                    placeholder={isDemoMode ? "Try GOOGL, MSFT, LLY..." : "Enter ticker (e.g., MSFT)"}
-                    className="px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none w-48"
+                    placeholder={isDemoMode ? "Try GOOGL, MSFT, TSLA..." : "Enter ticker (e.g., MSFT)"}
+                    className="flex-1 px-4 py-2.5 bg-black/40 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 transition-all"
                   />
                   <button 
                     type="submit" 
-                    className="btn-primary px-4 py-2 rounded-lg"
+                    className="btn-primary px-6 py-2.5 rounded-lg"
                     disabled={loading}
                   >
                     Analyze
                   </button>
                 </form>
                 
-                <div className="text-sm ghost">
-                  {isDemoMode ? 'Browse 30 demo stocks by category below' : 'Quick search available stocks'}
+                {/* Compact Ticker Grid */}
+                <div className="space-y-2">
+                  {/* Mega Cap Tech */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-blue-400 bg-blue-500/10 px-2 py-1 rounded border border-blue-400/20 shrink-0">
+                      💻 Tech Giants
+                    </span>
+                    {['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => loadStockData(t)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          ticker === t 
+                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25' 
+                            : 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 hover:text-blue-200 border border-blue-400/30'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Growth & SaaS */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-green-400 bg-green-500/10 px-2 py-1 rounded border border-green-400/20 shrink-0">
+                      📈 Growth
+                    </span>
+                    {['CRM', 'TSLA', 'NFLX', 'AMD', 'UBER', 'COIN'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => loadStockData(t)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          ticker === t 
+                            ? 'bg-green-500 text-white shadow-lg shadow-green-500/25' 
+                            : 'bg-green-500/20 text-green-300 hover:bg-green-500/30 hover:text-green-200 border border-green-400/30'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Financials */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-yellow-400 bg-yellow-500/10 px-2 py-1 rounded border border-yellow-400/20 shrink-0">
+                      🏦 Financial
+                    </span>
+                    {['JPM', 'UNH'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => loadStockData(t)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          ticker === t 
+                            ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/25' 
+                            : 'bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 hover:text-yellow-200 border border-yellow-400/30'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Healthcare & Consumer */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-purple-400 bg-purple-500/10 px-2 py-1 rounded border border-purple-400/20 shrink-0">
+                      🏥 Health & Consumer
+                    </span>
+                    {['LLY', 'HD', 'MCD', 'KO', 'NKE', 'DIS'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => loadStockData(t)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          ticker === t 
+                            ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/25' 
+                            : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 border border-purple-400/30'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Industrials & Semiconductors */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-medium text-orange-400 bg-orange-500/10 px-2 py-1 rounded border border-orange-400/20 shrink-0">
+                      ⚡ Industrial & Chips
+                    </span>
+                    {['FDX', 'QCOM', 'COST', 'TSM', 'INTC'].map(t => (
+                      <button
+                        key={t}
+                        onClick={() => loadStockData(t)}
+                        className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
+                          ticker === t 
+                            ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25' 
+                            : 'bg-orange-500/20 text-orange-300 hover:bg-orange-500/30 hover:text-orange-200 border border-orange-400/30'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              {/* Scrollable Stock Categories */}
-              <div className="space-y-4">
-                {Object.entries(tickerCategories).map(([category, tickers]) => 
-                  tickers.length > 0 && (
-                    <div key={category}>
-                      <div className="text-sm font-medium text-cyan-400 mb-2">{category}</div>
-                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
-                        <div className="flex gap-2 min-w-max">
-                          {tickers.map(t => (
-                            <button
-                              key={t}
-                              onClick={() => loadStockData(t)}
-                              className={`chip px-3 py-2 text-sm transition-all whitespace-nowrap ${
-                                ticker === t 
-                                  ? 'bg-cyan-400/20 text-cyan-400 border-cyan-400/40 font-medium' 
-                                  : 'hover:bg-white/10 hover:border-white/20'
-                              }`}
-                            >
-                              {t}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-
-              {/* Data Quality Indicators */}
+              {/* Enhanced Data Quality Indicators */}
               {stockData?.dataQuality && (
-                <div className="mt-4 pt-3 border-t border-white/10">
-                  <div className="flex flex-wrap gap-2 text-xs">
-                    <span className="ghost">Data sources:</span>
-                    {getDataQualityBadge(stockData.dataQuality.quote, 'Price')}
-                    {getDataQualityBadge(stockData.dataQuality.estimates, 'EPS')}
-                    {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E Bands')}
-                    {getDataQualityBadge(stockData.dataQuality.peers, 'Peers')}
-                    {getDataQualityBadge(stockData.dataQuality.segments, 'Segments')}
-                    {isDemoMode && (
-                      <span className="chip px-2 py-1 text-purple-400">
-                        ✨ Ready for live data
-                      </span>
-                    )}
-                  </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span className="ghost">Data sources:</span>
+                  {getDataQualityBadge(stockData.dataQuality.quote, 'Price')}
+                  {getDataQualityBadge(stockData.dataQuality.estimates, 'EPS')}
+                  {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E Bands')}
+                  {getDataQualityBadge(stockData.dataQuality.peers, 'Peers')}
+                  {getDataQualityBadge(stockData.dataQuality.segments, 'Segments')}
+                  {isDemoMode && (
+                    <span className="chip px-2 py-1 text-purple-400">
+                      ✨ Ready for live data
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -251,7 +307,7 @@ export default function ReportContent() {
                   <div className="flex items-start gap-3">
                     <div className="text-blue-400 mt-1">💡</div>
                     <div>
-                      <div className="text-blue-400 font-medium text-sm mb-1">Professional Demo Features</div>
+                      <div className="text-blue-400 font-medium text-sm mb-1">Demo Features Active</div>
                       <div className="text-xs text-blue-300/70 leading-relaxed">
                         Full institutional-grade analysis with forward EPS estimates, dynamic P/E valuation bands, 
                         peer comparisons, and comprehensive financial health scoring. 
@@ -264,7 +320,7 @@ export default function ReportContent() {
             </div>
           </div>
 
-          {/* Stock Header */}
+          {/* Stock Header with Enhanced Demo Styling */}
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-3">
@@ -294,7 +350,7 @@ export default function ReportContent() {
             </div>
           </header>
 
-          {/* Rest of the existing component layout remains the same... */}
+          {/* Rest of your existing component structure remains the same */}
           <section className="grid grid-cols-12 gap-4 relative">
             <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-20 self-start z-0 space-y-3">
               <ErrorBoundary fallback="Score display failed">
@@ -330,11 +386,7 @@ export default function ReportContent() {
               </ErrorBoundary>
             </aside>
 
-            {/* Main content area continues with existing layout... */}
             <div className="col-span-12 lg:col-span-9 space-y-4 z-0">
-              {/* Company info, valuation chart, peers, segments, analysis, news... */}
-              {/* (Rest of existing component remains unchanged) */}
-              
               <ErrorBoundary fallback="Company info failed to load">
                 <div className="card p-4">
                   <div className="flex items-center justify-between">
@@ -395,7 +447,7 @@ export default function ReportContent() {
                       <div className="font-medium mb-2">Valuation Analysis Unavailable</div>
                       <div className="text-sm ghost">
                         {isDemoMode 
-                          ? 'This demo ticker may not have complete EPS data. Try AAPL, MSFT, GOOGL, or LLY for full analysis.'
+                          ? 'This demo ticker may not have complete EPS data. Try AAPL, MSFT, GOOGL, or META for full analysis.'
                           : 'No forward EPS estimates available from analysts. This ticker may have limited coverage.'
                         }
                       </div>
@@ -403,12 +455,9 @@ export default function ReportContent() {
                   )}
                 </div>
               </ErrorBoundary>
-              
-              {/* Continue with existing sections... */}
             </div>
           </section>
 
-          {/* Peers and Segments Section */}
           <section className="grid grid-cols-12 gap-4 mt-4">
             <div className="col-span-12 lg:col-span-8">
               <ErrorBoundary fallback="Peers chart failed to load">
@@ -472,7 +521,6 @@ export default function ReportContent() {
             </aside>
           </section>
 
-          {/* Investment Analysis Section */}
           <section className="mt-4">
             <ErrorBoundary fallback="Investment analysis section failed">
               <div className="card p-4">
@@ -536,7 +584,6 @@ export default function ReportContent() {
             </ErrorBoundary>
           </section>
 
-          {/* News Section */}
           <section className="mt-4">
             <ErrorBoundary fallback="News section failed to load">
               <div className="card p-4">
@@ -599,8 +646,6 @@ export default function ReportContent() {
               </div>
             </ErrorBoundary>
           </section>
-
-          {/* Final CTA for Demo Mode */}
           {isDemoMode && (
             <div className="mt-8">
               <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
