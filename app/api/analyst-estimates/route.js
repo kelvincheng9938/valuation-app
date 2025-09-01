@@ -1,76 +1,51 @@
 import { NextResponse } from 'next/server'
 
 export async function GET(request) {
-  const FMP_API_KEY = process.env.FMP_API_KEY
-  const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY
-  
-  const results = {}
-  
-  // Test FMP endpoints for GOOGL
-  const fmpTests = [
-    {
-      name: 'FMP Analyst Estimates',
-      url: `https://financialmodelingprep.com/api/v3/analyst-estimates/GOOGL?apikey=${FMP_API_KEY}`
-    },
-    {
-      name: 'FMP Key Metrics', 
-      url: `https://financialmodelingprep.com/api/v3/key-metrics/GOOGL?limit=5&apikey=${FMP_API_KEY}`
-    },
-    {
-      name: 'FMP Ratios',
-      url: `https://financialmodelingprep.com/api/v3/ratios/GOOGL?limit=5&apikey=${FMP_API_KEY}`
-    },
-    {
-      name: 'FMP Profile',
-      url: `https://financialmodelingprep.com/api/v3/profile/GOOGL?apikey=${FMP_API_KEY}`
-    }
-  ]
-  
-  for (const test of fmpTests) {
-    try {
-      const response = await fetch(test.url)
-      const data = await response.json()
-      
-      results[test.name] = {
-        status: response.status,
-        success: response.ok,
-        dataLength: Array.isArray(data) ? data.length : 'Not array',
-        sample: Array.isArray(data) ? data[0] : data,
-        error: data.error || null
-      }
-    } catch (error) {
-      results[test.name] = {
-        status: 'ERROR',
-        success: false,
-        error: error.message
-      }
-    }
+  const { searchParams } = new URL(request.url)
+  const symbol = searchParams.get('symbol')
+
+  if (!symbol) {
+    return NextResponse.json({ error: 'Symbol parameter required' }, { status: 400 })
   }
-  
-  // Test Finnhub
+
   try {
-    const finnhubResponse = await fetch(`https://finnhub.io/api/v1/quote?symbol=GOOGL&token=${FINNHUB_API_KEY}`)
-    const finnhubData = await finnhubResponse.json()
+    // Yahoo Finance doesn't require API key for basic data
+    const quoteUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}`
+    const quoteResponse = await fetch(quoteUrl)
+    const quoteData = await quoteResponse.json()
+
+    if (quoteData.chart.error) {
+      return NextResponse.json({ error: 'Symbol not found' })
+    }
+
+    const result = quoteData.chart.result[0]
+    const meta = result.meta
     
-    results['Finnhub Quote'] = {
-      status: finnhubResponse.status,
-      success: finnhubResponse.ok,
-      data: finnhubData
-    }
+    // Get basic financial data
+    const summaryUrl = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=defaultKeyStatistics,financialData,earnings`
+    const summaryResponse = await fetch(summaryUrl)
+    const summaryData = await summaryResponse.json()
+
+    const keyStats = summaryData.quoteSummary?.result?.[0]?.defaultKeyStatistics
+    const financials = summaryData.quoteSummary?.result?.[0]?.financialData
+    const earnings = summaryData.quoteSummary?.result?.[0]?.earnings
+
+    return NextResponse.json({
+      symbol: symbol.toUpperCase(),
+      price: meta.regularMarketPrice,
+      change: meta.regularMarketPrice - meta.previousClose,
+      changePercent: ((meta.regularMarketPrice - meta.previousClose) / meta.previousClose) * 100,
+      marketCap: keyStats?.marketCap ? `${(keyStats.marketCap.raw / 1e9).toFixed(1)}B` : 'N/A',
+      forwardPE: keyStats?.forwardPE?.raw || 'N/A',
+      trailingPE: keyStats?.trailingPE?.raw || 'N/A',
+      sector: meta.instrumentType || 'Unknown',
+      dataSource: 'yahoo_free',
+      earnings: earnings,
+      lastUpdated: new Date().toISOString()
+    })
+
   } catch (error) {
-    results['Finnhub Quote'] = {
-      status: 'ERROR',
-      success: false,
-      error: error.message
-    }
+    console.error('Yahoo Finance API error:', error)
+    return NextResponse.json({ error: 'Failed to fetch data from Yahoo Finance' }, { status: 500 })
   }
-  
-  return NextResponse.json({
-    message: 'API Debug Results',
-    apiKeys: {
-      fmp: FMP_API_KEY ? `${FMP_API_KEY.substring(0, 8)}...` : 'MISSING',
-      finnhub: FINNHUB_API_KEY ? `${FINNHUB_API_KEY.substring(0, 8)}...` : 'MISSING'
-    },
-    results
-  })
 }
