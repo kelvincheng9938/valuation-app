@@ -408,6 +408,198 @@ export default function ReportContent() {
             </div>
           </section>
 
+          {/* Peers and Segments Section */}
+          <section className="grid grid-cols-12 gap-4 mt-4">
+            <div className="col-span-12 lg:col-span-8">
+              <ErrorBoundary fallback="Peers chart failed to load">
+                <div className="card p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">Peers – Forward P/E vs Market Cap</div>
+                    <div className="flex items-center gap-2">
+                      {isDemoMode && (
+                        <span className="chip px-2 py-1 text-blue-400 text-xs">
+                          📊 Demo Comparison
+                        </span>
+                      )}
+                      <button id="toggleLabelsBtn" className="btn text-xs">Labels: ON</button>
+                    </div>
+                  </div>
+                  
+                  {stockData?.peers?.length > 0 ? (
+                    <div id="peersChart" className="chart"></div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-yellow-400 text-xl mb-2">🏢</div>
+                      <div className="text-sm ghost">
+                        {isDemoMode 
+                          ? 'Peer comparison data not available for this demo ticker. Try AAPL, MSFT, or GOOGL for full peer analysis.'
+                          : 'No peer comparison data available for this ticker'
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ErrorBoundary>
+            </div>
+            
+            <aside className="col-span-12 lg:col-span-4">
+              <ErrorBoundary fallback="Segment chart failed to load">
+                <div className="card p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium">Revenue by Segment</div>
+                    {isDemoMode && (
+                      <span className="chip px-2 py-1 text-blue-400 text-xs">
+                        📈 Demo Data
+                      </span>
+                    )}
+                  </div>
+                  
+                  {stockData?.segments?.length > 0 ? (
+                    <div id="segmentPie" className="chart"></div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-yellow-400 text-xl mb-2">📈</div>
+                      <div className="text-sm ghost">
+                        {isDemoMode 
+                          ? 'Revenue segment breakdown not available for this demo ticker. Major companies like AAPL, MSFT, GOOGL have detailed segments.'
+                          : 'No revenue segment breakdown available for this ticker'
+                        }
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </ErrorBoundary>
+            </aside>
+          </section>
+
+          {/* Investment Analysis Section */}
+          <section className="mt-4">
+            <ErrorBoundary fallback="Investment analysis section failed">
+              <div className="card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Investment Analysis</div>
+                  {isDemoMode && (
+                    <span className="chip px-2 py-1 text-blue-400 text-xs">
+                      🎯 Professional Analysis
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <div className="ghost text-sm mb-2 flex items-center gap-2">
+                      <span className="text-green-400">✓</span> Key Investment Strengths
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      {stockData?.strengths?.map((strength, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-green-400 mt-1 text-xs">●</span>
+                          <span className="leading-relaxed">{strength}</span>
+                        </li>
+                      )) || (
+                        <li className="flex items-start gap-2">
+                          <span className="text-green-400 mt-1">●</span>
+                          <span>Loading investment strengths analysis...</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="ghost text-sm mb-2 flex items-center gap-2">
+                      <span className="text-red-400">⚠</span> Key Investment Risks
+                    </div>
+                    <ul className="space-y-2 text-sm">
+                      {stockData?.risks?.map((risk, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-red-400 mt-1 text-xs">●</span>
+                          <span className="leading-relaxed">{risk}</span>
+                        </li>
+                      )) || (
+                        <li className="flex items-start gap-2">
+                          <span className="text-red-400 mt-1">●</span>
+                          <span>Loading investment risks analysis...</span>
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+                
+                {isDemoMode && (
+                  <div className="mt-4 bg-blue-500/5 rounded-lg p-3 border border-blue-400/10">
+                    <div className="text-xs text-blue-300/70">
+                      💡 <span className="text-blue-400 font-medium">Professional Analysis:</span> These strengths and risks are based on 
+                      current business fundamentals, market positioning, and industry dynamics. In live mode, this analysis 
+                      would be enhanced with real-time financial metrics and market data.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ErrorBoundary>
+          </section>
+
+          {/* News Section */}
+          <section className="mt-4">
+            <ErrorBoundary fallback="News section failed to load">
+              <div className="card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Latest Company News</div>
+                  <div className="flex items-center gap-2 text-sm ghost">
+                    {isDemoMode ? (
+                      <span className="chip px-2 py-1 text-blue-400 text-xs">📰 Demo News</span>
+                    ) : (
+                      stockData?.newsSource === 'live' && <span className="text-green-400">● Live</span>
+                    )}
+                    <span>{stockData?.news?.length || 0} items</span>
+                  </div>
+                </div>
+                
+                {stockData?.news?.length > 0 ? (
+                  <ul className="divide-y divide-white/10">
+                    {stockData.news.slice(0, 6).map((item, i) => (
+                      <li key={i} className="py-3">
+                        <a 
+                          href={item.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="block hover:bg-white/5 -mx-2 px-2 py-2 rounded cursor-pointer transition-all duration-200 group"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-xs ghost">{item.source}</div>
+                            <div className="text-xs ghost">{item.datetime}</div>
+                          </div>
+                          <div className="text-sm group-hover:text-cyan-400 transition-colors font-medium mb-1">
+                            {item.headline}
+                          </div>
+                          {item.summary && item.summary !== item.headline && (
+                            <div className="text-xs ghost leading-relaxed">{item.summary}</div>
+                          )}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-yellow-400 text-xl mb-2">📰</div>
+                    <div className="text-sm ghost">
+                      {isDemoMode 
+                        ? `No recent news available in demo for ${ticker}. Major stocks like AAPL, MSFT, GOOGL have sample news articles.`
+                        : `No recent news available for ${ticker}`
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {isDemoMode && stockData?.news?.length > 0 && (
+                  <div className="mt-4 bg-blue-500/5 rounded-lg p-3 border border-blue-400/10">
+                    <div className="text-xs text-blue-300/70">
+                      📡 <span className="text-blue-400 font-medium">News Integration:</span> In live mode, this section automatically 
+                      pulls the latest company-specific news, earnings announcements, and analyst updates from premium financial news sources.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ErrorBoundary>
+          </section>
+
           {/* Final CTA for Demo Mode */}
           {isDemoMode && (
             <div className="mt-8">
