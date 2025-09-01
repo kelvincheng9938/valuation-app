@@ -17,85 +17,85 @@ export async function GET(request) {
   try {
     console.log(`Fetching P/E history for ${symbol}`)
     
-    // Try multiple endpoints for better data coverage
-    const endpoints = [
-      `https://financialmodelingprep.com/api/v3/ratios/${symbol}?limit=20&apikey=${FMP_API_KEY}`,
-      `https://financialmodelingprep.com/api/v3/key-metrics/${symbol}?limit=20&apikey=${FMP_API_KEY}`
-    ];
+    // Try historical ratios endpoint first
+    const ratiosUrl = `https://financialmodelingprep.com/api/v3/ratios/${symbol}?limit=40&apikey=${FMP_API_KEY}`
+    const ratiosResponse = await fetch(ratiosUrl)
+    const ratiosData = await ratiosResponse.json()
 
-    let data = null;
-    for (const url of endpoints) {
-      try {
-        const response = await fetch(url);
-        const apiData = await response.json();
-        console.log(`API response for ${symbol}:`, apiData);
+    let peRatios = []
+
+    if (Array.isArray(ratiosData) && ratiosData.length > 0) {
+      peRatios = ratiosData
+        .map(item => item.priceEarningsRatio)
+        .filter(pe => pe && pe > 0 && pe < 200)
+        .sort((a, b) => a - b)
+      
+      console.log(`Found ${peRatios.length} P/E ratios from ratios endpoint:`, peRatios)
+    }
+
+    // If not enough data, try key-metrics endpoint
+    if (peRatios.length < 5) {
+      const keyMetricsUrl = `https://financialmodelingprep.com/api/v3/key-metrics/${symbol}?limit=40&apikey=${FMP_API_KEY}`
+      const keyMetricsResponse = await fetch(keyMetricsUrl)
+      const keyMetricsData = await keyMetricsResponse.json()
+
+      if (Array.isArray(keyMetricsData) && keyMetricsData.length > 0) {
+        const keyMetricsPE = keyMetricsData
+          .map(item => item.peRatio)
+          .filter(pe => pe && pe > 0 && pe < 200)
+          .sort((a, b) => a - b)
         
-        if (Array.isArray(apiData) && apiData.length > 0) {
-          data = apiData;
-          break;
-        }
-      } catch (error) {
-        console.log(`Failed to fetch from ${url}:`, error);
-        continue;
+        console.log(`Found ${keyMetricsPE.length} P/E ratios from key-metrics endpoint:`, keyMetricsPE)
+        
+        // Combine and deduplicate
+        const combinedPE = [...new Set([...peRatios, ...keyMetricsPE])].sort((a, b) => a - b)
+        peRatios = combinedPE
       }
     }
 
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      console.log(`No historical data for ${symbol}, using fallback`);
-      const fallbackBands = getFallbackPEBands(symbol.toUpperCase())
+    // Need at least 8 data points for reliable percentiles
+    if (peRatios.length < 8) {
+      console.log(`Insufficient P/E data for ${symbol} (${peRatios.length} points), using sector defaults`)
+      const sectorBands = getSectorBasedPEBands(symbol.toUpperCase())
       return NextResponse.json({
-        peBands: fallbackBands,
-        dataSource: 'fallback',
-        message: 'Using fallback P/E bands - no historical data available'
+        peBands: sectorBands,
+        dataSource: 'sector_default',
+        message: `Using sector-based P/E bands - only ${peRatios.length} historical data points available`,
+        dataPoints: peRatios.length
       })
     }
 
-    // Extract P/E ratios from either endpoint
-    const peRatios = data
-      .map(item => item.priceEarningsRatio || item.peRatio)
-      .filter(pe => pe && pe > 0 && pe < 200)
-      .sort((a, b) => a - b)
-
-    console.log(`Found ${peRatios.length} valid P/E ratios for ${symbol}:`, peRatios);
-
-    if (peRatios.length < 3) {
-      console.log(`Insufficient P/E data for ${symbol}, using fallback`);
-      const fallbackBands = getFallbackPEBands(symbol.toUpperCase())
-      return NextResponse.json({
-        peBands: fallbackBands,
-        dataSource: 'fallback',
-        message: 'Using fallback P/E bands - insufficient historical data'
-      })
-    }
-
-    // Calculate percentiles
+    // Calculate percentiles from historical data
     const bands = {
       low: calculatePercentile(peRatios, 25),
-      mid: calculatePercentile(peRatios, 50),
+      mid: calculatePercentile(peRatios, 50), 
       high: calculatePercentile(peRatios, 75)
     }
 
-    console.log(`Calculated P/E bands for ${symbol}:`, bands);
+    console.log(`Calculated P/E bands for ${symbol}:`, bands)
 
     return NextResponse.json({
       peBands: bands,
       dataSource: 'historical',
       dataPoints: peRatios.length,
+      rawData: peRatios.slice(0, 10), // First 10 for debugging
       lastUpdated: new Date().toISOString()
     })
 
   } catch (error) {
     console.error(`P/E history API error for ${symbol}:`, error)
-    const fallbackBands = getFallbackPEBands(symbol.toUpperCase())
+    const sectorBands = getSectorBasedPEBands(symbol.toUpperCase())
     return NextResponse.json({
-      peBands: fallbackBands,
-      dataSource: 'fallback',
-      message: 'Using fallback P/E bands - API error'
+      peBands: sectorBands,
+      dataSource: 'sector_default',
+      message: 'API error - using sector defaults'
     })
   }
 }
 
 function calculatePercentile(sortedArray, percentile) {
+  if (sortedArray.length === 0) return 0
+  
   const index = (percentile / 100) * (sortedArray.length - 1)
   const lower = Math.floor(index)
   const upper = Math.ceil(index)
@@ -107,18 +107,31 @@ function calculatePercentile(sortedArray, percentile) {
   return Math.round(value * 10) / 10
 }
 
-function getFallbackPEBands(symbol) {
-  const fallbackMap = {
-    'GOOGL': { low: 20.5, mid: 22.5, high: 25.2 },
-    'MSFT': { low: 28.0, mid: 32.0, high: 36.0 },
-    'AAPL': { low: 24.0, mid: 28.0, high: 32.0 },
-    'AMZN': { low: 35.0, mid: 42.0, high: 50.0 },
-    'NVDA': { low: 45.0, mid: 60.0, high: 80.0 },
-    'AMD': { low: 18.0, mid: 23.0, high: 32.0 },
-    'CRM': { low: 25.0, mid: 30.0, high: 35.0 },
-    'TSLA': { low: 40.0, mid: 60.0, high: 90.0 },
-    'META': { low: 18.0, mid: 22.0, high: 26.0 }
+function getSectorBasedPEBands(symbol) {
+  // Sector-specific P/E bands based on industry averages
+  const sectorMap = {
+    // Technology
+    'GOOGL': { low: 18.5, mid: 22.8, high: 28.2 },
+    'MSFT': { low: 24.0, mid: 28.5, high: 35.0 },
+    'AAPL': { low: 22.0, mid: 26.5, high: 32.0 },
+    'META': { low: 16.0, mid: 20.5, high: 25.5 },
+    'NVDA': { low: 35.0, mid: 55.0, high: 75.0 },
+    'AMD': { low: 20.0, mid: 28.0, high: 40.0 },
+    
+    // Cloud/SaaS
+    'CRM': { low: 28.0, mid: 35.0, high: 45.0 },
+    'NOW': { low: 45.0, mid: 60.0, high: 80.0 },
+    'WDAY': { low: 35.0, mid: 45.0, high: 60.0 },
+    
+    // E-commerce/Consumer
+    'AMZN': { low: 30.0, mid: 45.0, high: 65.0 },
+    'TSLA': { low: 35.0, mid: 55.0, high: 85.0 },
+    
+    // Financial 
+    'JPM': { low: 10.0, mid: 12.5, high: 16.0 },
+    'BAC': { low: 9.0, mid: 11.5, high: 15.0 },
+    'GS': { low: 8.5, mid: 11.0, high: 14.0 }
   }
 
-  return fallbackMap[symbol] || { low: 18.0, mid: 22.0, high: 28.0 }
+  return sectorMap[symbol] || { low: 15.0, mid: 20.0, high: 27.0 }
 }
