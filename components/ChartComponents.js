@@ -1,3 +1,4 @@
+// components/ChartComponents.js - Updated without Value Score Sparkline
 'use client';
 
 let echartsLib = null;
@@ -43,21 +44,6 @@ export async function initCharts(stockData) {
         return null;
       }
     };
-
-    // Sparkline
-    safeCreateChart('band-spark', {
-      grid: { left: 0, right: 0, top: 5, bottom: 0 },
-      xAxis: { type: 'category', show: false, data: [0,1,2] },
-      yAxis: { type: 'value', show: false },
-      series: [{
-        type: 'line',
-        smooth: true,
-        data: [22, 25, 30],
-        areaStyle: { color: 'rgba(6,182,212,0.3)' },
-        lineStyle: { color: '#06b6d4', width: 2 },
-        showSymbol: false
-      }]
-    });
 
     // Quality Radar
     const s = stockData?.scores || { value: 8.2, growth: 7.6, profit: 9.0, momentum: 6.9 };
@@ -138,6 +124,7 @@ if (eps && eps.years && eps.years.length > 0 && eps.values && eps.values.length 
     ]
   });
 }
+
   // Peers Chart - Check if peers data is available
 const peers = stockData?.peers;
 let peersChart = null;
@@ -194,16 +181,6 @@ if (peers && peers.length > 0) {
   }
 }
 
-    // Toggle button for peers
-    const btn = document.getElementById('toggleLabelsBtn');
-    if (btn && peersChart) {
-      btn.onclick = () => {
-        labelsOn = !labelsOn;
-        btn.textContent = `Labels: ${labelsOn ? 'ON' : 'OFF'}`;
-        peersChart.setOption({ series: [{ label: { show: labelsOn } }] });
-      };
-    }
-
   // Segment Pie - Check if segments data is available
 const segments = stockData?.segments;
 
@@ -220,6 +197,7 @@ if (segments && segments.length > 0) {
     }]
   });
 }
+
     // Resize handler
     const onResize = () => {
       instances.forEach(instance => {
@@ -240,7 +218,7 @@ if (segments && segments.length > 0) {
     console.error('Error initializing charts:', error);
     
     // Show error message in chart containers
-    const errorElements = ['band-spark', 'qualityRadar', 'valuationChart', 'peersChart', 'segmentPie'];
+    const errorElements = ['qualityRadar', 'valuationChart', 'peersChart', 'segmentPie'];
     errorElements.forEach(id => {
       const element = document.getElementById(id);
       if (element) {
