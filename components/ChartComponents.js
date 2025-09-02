@@ -1,4 +1,3 @@
-// components/ChartComponents.js - Updated without Value Score Sparkline
 'use client';
 
 let echartsLib = null;
@@ -197,7 +196,7 @@ if (segments && segments.length > 0) {
     }]
   });
 }
-
+    
     // Resize handler
     const onResize = () => {
       instances.forEach(instance => {
