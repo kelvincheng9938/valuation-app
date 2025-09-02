@@ -1,4 +1,4 @@
-// components/ReportContent.js - Theme Aware Version
+// components/ReportContent.js - WITH Valuation Indicator Bar
 'use client'
 import { useEffect, useState } from 'react'
 import Navigation from './Navigation'
@@ -72,6 +72,37 @@ export default function ReportContent() {
 
   // Demo mode indicator
   const isDemoMode = stockData?.dataQuality?.quote === 'demo'
+
+  // Calculate valuation position for the indicator bar
+  const getValuationPosition = () => {
+    if (!stockData?.eps?.values?.[0] || !stockData?.peBands || !stockData?.price) {
+      return { position: 50, status: 'Fair Value' }
+    }
+
+    const currentPE = stockData.price / stockData.eps.values[0]
+    const { low, mid, high } = stockData.peBands
+
+    let position = 50 // Default to middle
+    let status = 'Fair Value'
+
+    if (currentPE <= low) {
+      position = 15
+      status = 'Undervalued'
+    } else if (currentPE <= mid) {
+      position = 30
+      status = 'Fair Value'
+    } else if (currentPE <= high) {
+      position = 70
+      status = 'Fair Value'
+    } else {
+      position = 85
+      status = 'Overvalued'
+    }
+
+    return { position, status }
+  }
+
+  const valuationInfo = getValuationPosition()
 
   const getDataQualityBadge = (quality, label) => {
     if (quality === 'demo') {
@@ -287,39 +318,86 @@ export default function ReportContent() {
             </div>
           </header>
 
-          {/* Score Cards Section - All Same Size */}
+          {/* MISSING SECTION: Valuation Indicator Bar */}
+          <section className="mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Score Cards Row - Now horizontal on larger screens */}
+              <div className="lg:col-span-9">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="card kpi p-4 text-center">
+                    <div className="text-2xl font-bold mb-1" style={{ color: '#f59e0b' }}>
+                      {stockData?.scores?.value?.toFixed(1) || '0.0'}
+                    </div>
+                    <div className="text-xs ghost">Value</div>
+                  </div>
+                  <div className="card kpi p-4 text-center">
+                    <div className="text-2xl font-bold mb-1" style={{ color: '#3b82f6' }}>
+                      {stockData?.scores?.growth?.toFixed(1) || '0.0'}
+                    </div>
+                    <div className="text-xs ghost">Growth</div>
+                  </div>
+                  <div className="card kpi p-4 text-center">
+                    <div className="text-2xl font-bold mb-1" style={{ color: '#10b981' }}>
+                      {stockData?.scores?.profit?.toFixed(1) || '0.0'}
+                    </div>
+                    <div className="text-xs ghost">Profit</div>
+                  </div>
+                  <div className="card kpi p-4 text-center">
+                    <div className="text-2xl font-bold mb-1" style={{ color: '#8b5cf6' }}>
+                      {stockData?.scores?.momentum?.toFixed(1) || '0.0'}
+                    </div>
+                    <div className="text-xs ghost">Momentum</div>
+                  </div>
+                </div>
+
+                {/* Valuation Indicator Bar */}
+                <div className="card p-4">
+                  <div className="flex items-center justify-between text-xs ghost mb-3">
+                    <span>Undervalued</span>
+                    <span>Fair Value</span>
+                    <span>Overvalued</span>
+                  </div>
+                  
+                  <div className="relative">
+                    {/* Background gradient bar */}
+                    <div className="h-2 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400"></div>
+                    
+                    {/* Current price indicator */}
+                    <div 
+                      className="absolute top-0 w-1 h-2 bg-gray-900 rounded-full transform -translate-x-1/2"
+                      style={{ left: `${valuationInfo.position}%` }}
+                    ></div>
+                    
+                    {/* Price marker line */}
+                    <div 
+                      className="absolute top-2 w-px h-4 bg-gray-600 transform -translate-x-1/2"
+                      style={{ left: `${valuationInfo.position}%` }}
+                    ></div>
+                  </div>
+                  
+                  <div className="text-center mt-3">
+                    <div className="text-xs font-medium">Current Price</div>
+                    <div className="text-xs ghost mt-1">{valuationInfo.status}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Demo Badge */}
+              <div className="lg:col-span-3 flex items-end justify-end">
+                {isDemoMode && (
+                  <div className="chip px-4 py-2 bg-blue-500/20 text-blue-400 border-blue-400/30">
+                    <span className="font-medium">🔵 Live Demo</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          {/* Main Content Grid */}
           <section className="grid grid-cols-12 gap-4 relative">
-            <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-20 self-start z-0 space-y-3">
-              <ErrorBoundary fallback="Score display failed">
-                {/* All 4 score cards now have IDENTICAL structure */}
-                <div className="card kpi p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm ghost">Value Score</div>
-                    <div className="text-lg font-semibold">{stockData?.scores?.value?.toFixed(1) || '0.0'}</div>
-                  </div>
-                </div>
-                
-                <div className="card kpi p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm ghost">Growth Score</div>
-                    <div className="text-lg font-semibold">{stockData?.scores?.growth?.toFixed(1) || '0.0'}</div>
-                  </div>
-                </div>
-                
-                <div className="card kpi p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm ghost">Profitability</div>
-                    <div className="text-lg font-semibold">{stockData?.scores?.profit?.toFixed(1) || '0.0'}</div>
-                  </div>
-                </div>
-                
-                <div className="card kpi p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm ghost">Momentum</div>
-                    <div className="text-lg font-semibold">{stockData?.scores?.momentum?.toFixed(1) || '0.0'}</div>
-                  </div>
-                </div>
-                
+            {/* Sidebar - Quality Radar only now */}
+            <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-20 self-start z-0">
+              <ErrorBoundary fallback="Quality radar failed">
                 <div className="card p-4">
                   <div className="font-medium mb-2">Quality Radar</div>
                   <div id="qualityRadar" className="chart"></div>
@@ -358,7 +436,7 @@ export default function ReportContent() {
                 </div>
               </ErrorBoundary>
 
-              {/* Valuation Analysis */}
+              {/* Valuation Analysis Chart */}
               <ErrorBoundary fallback="Valuation chart failed to load">
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -400,7 +478,7 @@ export default function ReportContent() {
             </div>
           </section>
 
-          {/* Rest of sections */}
+          {/* Rest of sections remain the same... */}
           <section className="grid grid-cols-12 gap-4 mt-4">
             <div className="col-span-12 lg:col-span-8">
               <ErrorBoundary fallback="Peers chart failed to load">
