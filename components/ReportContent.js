@@ -1,4 +1,4 @@
-// components/ReportContent.js - WITH Valuation Indicator Bar
+// components/ReportContent.js - COMPACT Layout (Space Efficient)
 'use client'
 import { useEffect, useState } from 'react'
 import Navigation from './Navigation'
@@ -26,7 +26,6 @@ export default function ReportContent() {
   // Update charts when theme changes
   useEffect(() => {
     if (stockData) {
-      // Small delay to ensure CSS variables are updated
       setTimeout(() => {
         initCharts(stockData)
       }, 150)
@@ -44,7 +43,6 @@ export default function ReportContent() {
       setTicker(symbol.toUpperCase())
       setUpdateKey(prev => prev + 1)
       
-      // Initialize charts with new data
       setTimeout(async () => {
         try {
           await initCharts(data)
@@ -73,7 +71,7 @@ export default function ReportContent() {
   // Demo mode indicator
   const isDemoMode = stockData?.dataQuality?.quote === 'demo'
 
-  // Calculate valuation position for the indicator bar
+  // Calculate valuation position
   const getValuationPosition = () => {
     if (!stockData?.eps?.values?.[0] || !stockData?.peBands || !stockData?.price) {
       return { position: 50, status: 'Fair Value' }
@@ -82,17 +80,17 @@ export default function ReportContent() {
     const currentPE = stockData.price / stockData.eps.values[0]
     const { low, mid, high } = stockData.peBands
 
-    let position = 50 // Default to middle
+    let position = 50
     let status = 'Fair Value'
 
     if (currentPE <= low) {
       position = 15
       status = 'Undervalued'
     } else if (currentPE <= mid) {
-      position = 30
+      position = 35
       status = 'Fair Value'
     } else if (currentPE <= high) {
-      position = 70
+      position = 65
       status = 'Fair Value'
     } else {
       position = 85
@@ -144,14 +142,6 @@ export default function ReportContent() {
             <div className="text-red-400 text-4xl mb-4">⚠️</div>
             <div className="text-xl font-bold mb-4">Unable to Load Analysis</div>
             <div className="text-sm ghost mb-6">{error}</div>
-            {isDemoMode && (
-              <div className="bg-blue-500/10 border border-blue-400/20 rounded-lg p-4 mb-6">
-                <div className="text-blue-400 font-medium mb-2">📊 Demo Mode Available</div>
-                <div className="text-sm ghost">
-                  Try one of these available demo tickers: {availableTickers.slice(0, 8).join(', ')}, and more...
-                </div>
-              </div>
-            )}
             <div className="space-y-3">
               <button
                 onClick={() => loadStockData(ticker)}
@@ -183,43 +173,43 @@ export default function ReportContent() {
           
           {/* Demo Mode Header Banner */}
           {isDemoMode && (
-            <div className="mb-6">
-              <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-4">
+            <div className="mb-4">
+              <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                     <div>
-                      <div className="text-blue-400 font-semibold">
+                      <div className="text-blue-400 font-semibold text-sm">
                         🎯 Professional Demo Mode {theme === 'light' ? '☀️' : '🌙'}
                       </div>
-                      <div className="text-sm text-blue-300/80">
+                      <div className="text-xs text-blue-300/80">
                         Exploring comprehensive stock analysis with realistic January 2025 data
                       </div>
                     </div>
                   </div>
                   <div className="chip px-3 py-2 bg-blue-500/20">
-                    <span className="text-blue-400 font-medium">Demo Active</span>
+                    <span className="text-blue-400 font-medium text-sm">Demo Active</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Enhanced Ticker Search Header */}
-          <div className="mb-6">
-            <div className="card p-4">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
+          {/* Compact Ticker Search Header */}
+          <div className="mb-4">
+            <div className="card p-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <form onSubmit={handleSearch} className="flex gap-2">
                   <input
                     type="text"
                     value={inputTicker}
                     onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
                     placeholder={isDemoMode ? "Try GOOGL, MSFT, TSLA..." : "Enter ticker (e.g., MSFT)"}
-                    className="px-3 py-2 border rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
+                    className="px-3 py-2 border rounded-lg text-sm placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
                   />
                   <button 
                     type="submit" 
-                    className="btn-primary px-4 py-2 rounded-lg"
+                    className="btn-primary px-4 py-2 rounded-lg text-sm"
                     disabled={loading}
                   >
                     Analyze
@@ -227,10 +217,8 @@ export default function ReportContent() {
                 </form>
                 
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-sm ghost">
-                    {isDemoMode ? 'Demo Stocks:' : 'Quick:'}
-                  </span>
-                  {availableTickers.slice(0, 8).map(t => (
+                  <span className="text-xs ghost">Quick:</span>
+                  {availableTickers.slice(0, 6).map(t => (
                     <button
                       key={t}
                       onClick={() => loadStockData(t)}
@@ -243,56 +231,27 @@ export default function ReportContent() {
                       {t}
                     </button>
                   ))}
-                  {availableTickers.length > 8 && (
-                    <span className="chip px-2 py-1 text-xs text-gray-400">
-                      +{availableTickers.length - 8} more
-                    </span>
-                  )}
                 </div>
               </div>
 
-              {/* Enhanced Data Quality Indicators */}
+              {/* Compact Data Quality Indicators */}
               {stockData?.dataQuality && (
-                <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                  <span className="ghost">Data sources:</span>
+                <div className="mt-2 flex flex-wrap gap-1 text-xs">
+                  <span className="ghost text-xs">Sources:</span>
                   {getDataQualityBadge(stockData.dataQuality.quote, 'Price')}
                   {getDataQualityBadge(stockData.dataQuality.estimates, 'EPS')}
-                  {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E Bands')}
+                  {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E')}
                   {getDataQualityBadge(stockData.dataQuality.peers, 'Peers')}
-                  {getDataQualityBadge(stockData.dataQuality.segments, 'Segments')}
-                  {isDemoMode && (
-                    <span className="chip px-2 py-1 text-purple-400">
-                      ✨ Ready for live data
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Demo Information Panel */}
-              {isDemoMode && (
-                <div className="mt-3 bg-gradient-to-r from-blue-500/5 to-purple-500/5 rounded-lg p-3 border border-blue-400/10">
-                  <div className="flex items-start gap-3">
-                    <div className="text-blue-400 mt-1">💡</div>
-                    <div>
-                      <div className="text-blue-400 font-medium text-sm mb-1">Demo Features Active</div>
-                      <div className="text-xs text-blue-300/70 leading-relaxed">
-                        Full institutional-grade analysis with forward EPS estimates, dynamic P/E valuation bands, 
-                        peer comparisons, and comprehensive financial health scoring. 
-                        <span className="text-blue-400 font-medium"> Ready to go live with real APIs.</span>
-                        <span className="ml-2">Switch themes anytime using the toggle in the navigation!</span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Stock Header */}
+          {/* Compact Stock Header */}
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-3">
-                <h1 className="text-xl font-semibold tracking-wide">
+                <h1 className="text-lg font-semibold tracking-wide">
                   {stockData?.name || 'Loading...'} ({ticker})
                   {isDemoMode && (
                     <span className="ml-2 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
@@ -300,12 +259,12 @@ export default function ReportContent() {
                     </span>
                   )}
                 </h1>
-                <span className="ghost text-sm">
+                <span className="ghost text-xs">
                   Updated: {stockData?.lastUpdated ? new Date(stockData.lastUpdated).toLocaleTimeString() : 'Just now'}
                 </span>
               </div>
               <div className="text-right">
-                <div className="text-lg font-semibold">
+                <div className="text-xl font-semibold">
                   ${stockData?.price?.toFixed(2) || '0.00'}
                 </div>
                 {stockData?.changePercent && (
@@ -318,178 +277,168 @@ export default function ReportContent() {
             </div>
           </header>
 
-          {/* MISSING SECTION: Valuation Indicator Bar */}
-          <section className="mb-6">
+          {/* COMPACT: Score Cards + Valuation Bar in single section */}
+          <section className="mb-4">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              {/* Score Cards Row - Now horizontal on larger screens */}
-              <div className="lg:col-span-9">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                  <div className="card kpi p-4 text-center">
-                    <div className="text-2xl font-bold mb-1" style={{ color: '#f59e0b' }}>
+              {/* Score Cards + Valuation Bar */}
+              <div className="lg:col-span-8">
+                {/* Score Cards Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                  <div className="card kpi p-3 text-center">
+                    <div className="text-xl font-bold mb-1" style={{ color: '#f59e0b' }}>
                       {stockData?.scores?.value?.toFixed(1) || '0.0'}
                     </div>
                     <div className="text-xs ghost">Value</div>
                   </div>
-                  <div className="card kpi p-4 text-center">
-                    <div className="text-2xl font-bold mb-1" style={{ color: '#3b82f6' }}>
+                  <div className="card kpi p-3 text-center">
+                    <div className="text-xl font-bold mb-1" style={{ color: '#3b82f6' }}>
                       {stockData?.scores?.growth?.toFixed(1) || '0.0'}
                     </div>
                     <div className="text-xs ghost">Growth</div>
                   </div>
-                  <div className="card kpi p-4 text-center">
-                    <div className="text-2xl font-bold mb-1" style={{ color: '#10b981' }}>
+                  <div className="card kpi p-3 text-center">
+                    <div className="text-xl font-bold mb-1" style={{ color: '#10b981' }}>
                       {stockData?.scores?.profit?.toFixed(1) || '0.0'}
                     </div>
                     <div className="text-xs ghost">Profit</div>
                   </div>
-                  <div className="card kpi p-4 text-center">
-                    <div className="text-2xl font-bold mb-1" style={{ color: '#8b5cf6' }}>
+                  <div className="card kpi p-3 text-center">
+                    <div className="text-xl font-bold mb-1" style={{ color: '#8b5cf6' }}>
                       {stockData?.scores?.momentum?.toFixed(1) || '0.0'}
                     </div>
                     <div className="text-xs ghost">Momentum</div>
                   </div>
                 </div>
 
-                {/* Valuation Indicator Bar */}
+                {/* Valuation Bar */}
                 <div className="card p-4">
-                  <div className="flex items-center justify-between text-xs ghost mb-3">
+                  <div className="flex items-center justify-between text-xs ghost mb-2">
                     <span>Undervalued</span>
                     <span>Fair Value</span>
                     <span>Overvalued</span>
                   </div>
                   
-                  <div className="relative">
-                    {/* Background gradient bar */}
+                  <div className="relative mb-3">
                     <div className="h-2 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400"></div>
-                    
-                    {/* Current price indicator */}
                     <div 
                       className="absolute top-0 w-1 h-2 bg-gray-900 rounded-full transform -translate-x-1/2"
                       style={{ left: `${valuationInfo.position}%` }}
                     ></div>
-                    
-                    {/* Price marker line */}
                     <div 
-                      className="absolute top-2 w-px h-4 bg-gray-600 transform -translate-x-1/2"
+                      className="absolute top-2 w-px h-3 bg-gray-600 transform -translate-x-1/2"
                       style={{ left: `${valuationInfo.position}%` }}
                     ></div>
                   </div>
                   
-                  <div className="text-center mt-3">
+                  <div className="text-center">
                     <div className="text-xs font-medium">Current Price</div>
-                    <div className="text-xs ghost mt-1">{valuationInfo.status}</div>
+                    <div className="text-xs ghost">{valuationInfo.status}</div>
                   </div>
                 </div>
               </div>
 
-              {/* Demo Badge */}
-              <div className="lg:col-span-3 flex items-end justify-end">
-                {isDemoMode && (
-                  <div className="chip px-4 py-2 bg-blue-500/20 text-blue-400 border-blue-400/30">
-                    <span className="font-medium">🔵 Live Demo</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* Main Content Grid */}
-          <section className="grid grid-cols-12 gap-4 relative">
-            {/* Sidebar - Quality Radar only now */}
-            <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-20 self-start z-0">
-              <ErrorBoundary fallback="Quality radar failed">
+              {/* Quality Radar + Demo Badge */}
+              <div className="lg:col-span-4">
                 <div className="card p-4">
-                  <div className="font-medium mb-2">Quality Radar</div>
-                  <div id="qualityRadar" className="chart"></div>
-                </div>
-              </ErrorBoundary>
-            </aside>
-
-            <div className="col-span-12 lg:col-span-9 space-y-4 z-0">
-              <ErrorBoundary fallback="Company info failed to load">
-                <div className="card p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="font-medium">About the Company</div>
-                    <div className="text-sm ghost">Key Stats</div>
-                  </div>
-                  <p className="text-sm mt-2 leading-relaxed">
-                    {stockData?.description || 'Loading company information...'}
-                  </p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-                    <div className="chip px-2 py-2 text-sm">
-                      <div className="ghost text-xs">Market Cap</div>
-                      <div className="font-medium">{stockData?.marketCap || 'N/A'}</div>
-                    </div>
-                    <div className="chip px-2 py-2 text-sm">
-                      <div className="ghost text-xs">Forward P/E</div>
-                      <div className="font-medium">{stockData?.forwardPE || 'N/A'}</div>
-                    </div>
-                    <div className="chip px-2 py-2 text-sm">
-                      <div className="ghost text-xs">TTM P/E</div>
-                      <div className="font-medium">{stockData?.ttmPE || 'N/A'}</div>
-                    </div>
-                    <div className="chip px-2 py-2 text-sm">
-                      <div className="ghost text-xs">Sector</div>
-                      <div className="font-medium">{stockData?.sector || 'Unknown'}</div>
-                    </div>
-                  </div>
-                </div>
-              </ErrorBoundary>
-
-              {/* Valuation Analysis Chart */}
-              <ErrorBoundary fallback="Valuation chart failed to load">
-                <div className="card p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium">Valuation Analysis</div>
-                    <div className="text-sm ghost">Current Price: ${stockData?.price?.toFixed(2) || '0.00'}</div>
-                  </div>
-                  
-                  {stockData?.eps?.values?.length > 0 && stockData?.peBands ? (
-                    <>
-                      <div className="flex items-center gap-2 text-xs mb-2 flex-wrap">
-                        <span className="chip px-2 py-1">
-                          EPS: {stockData.eps.values.join(' / ')}
-                        </span>
-                        <span className="chip px-2 py-1">
-                          P/E Bands: {stockData.peBands.low}× / {stockData.peBands.mid}× / {stockData.peBands.high}×
-                        </span>
-                        {isDemoMode && (
-                          <span className="chip px-2 py-1 text-blue-400">
-                            📊 Demo Analysis
-                          </span>
-                        )}
-                      </div>
-                      <div id="valuationChart" className="chart-lg"></div>
-                    </>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="text-yellow-400 text-2xl mb-2">📊</div>
-                      <div className="font-medium mb-2">Valuation Analysis Unavailable</div>
-                      <div className="text-sm ghost">
-                        {isDemoMode 
-                          ? 'This demo ticker may not have complete EPS data. Try AAPL, MSFT, GOOGL, or META for full analysis.'
-                          : 'No forward EPS estimates available from analysts. This ticker may have limited coverage.'
-                        }
+                  <div className="font-medium mb-2 text-center">Quality Radar</div>
+                  <div id="qualityRadar" style={{ width: '100%', height: '240px' }}></div>
+                  {isDemoMode && (
+                    <div className="mt-3 text-center">
+                      <div className="chip px-3 py-1 bg-blue-500/20 text-blue-400 border-blue-400/30 inline-block">
+                        <span className="font-medium">🔵 Live Demo</span>
                       </div>
                     </div>
                   )}
                 </div>
-              </ErrorBoundary>
+              </div>
             </div>
           </section>
 
-          {/* Rest of sections remain the same... */}
-          <section className="grid grid-cols-12 gap-4 mt-4">
-            <div className="col-span-12 lg:col-span-8">
+          {/* COMPACT: Company Info + Key Stats */}
+          <section className="mb-4">
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="font-medium">About the Company</div>
+                <div className="text-sm ghost">Key Stats</div>
+              </div>
+              
+              <p className="text-sm mb-3 leading-relaxed">
+                {stockData?.description || 'Loading company information...'}
+              </p>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="chip px-3 py-2 text-sm">
+                  <div className="ghost text-xs">Market Cap</div>
+                  <div className="font-medium">{stockData?.marketCap || 'N/A'}</div>
+                </div>
+                <div className="chip px-3 py-2 text-sm">
+                  <div className="ghost text-xs">Forward P/E</div>
+                  <div className="font-medium">{stockData?.forwardPE || 'N/A'}</div>
+                </div>
+                <div className="chip px-3 py-2 text-sm">
+                  <div className="ghost text-xs">TTM P/E</div>
+                  <div className="font-medium">{stockData?.ttmPE || 'N/A'}</div>
+                </div>
+                <div className="chip px-3 py-2 text-sm">
+                  <div className="ghost text-xs">Sector</div>
+                  <div className="font-medium">{stockData?.sector || 'Unknown'}</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* COMPACT: Valuation Chart */}
+          <section className="mb-4">
+            <ErrorBoundary fallback="Valuation chart failed to load">
+              <div className="card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-medium">Valuation Analysis</div>
+                  <div className="text-sm ghost">Current Price: ${stockData?.price?.toFixed(2) || '0.00'}</div>
+                </div>
+                
+                {stockData?.eps?.values?.length > 0 && stockData?.peBands ? (
+                  <>
+                    <div className="flex items-center gap-2 text-xs mb-2 flex-wrap">
+                      <span className="chip px-2 py-1">
+                        EPS: {stockData.eps.values.join(' / ')}
+                      </span>
+                      <span className="chip px-2 py-1">
+                        P/E Bands: {stockData.peBands.low}× / {stockData.peBands.mid}× / {stockData.peBands.high}×
+                      </span>
+                      {isDemoMode && (
+                        <span className="chip px-2 py-1 text-blue-400">
+                          📊 Demo Analysis
+                        </span>
+                      )}
+                    </div>
+                    <div id="valuationChart" className="chart-lg"></div>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="text-yellow-400 text-2xl mb-2">📊</div>
+                    <div className="font-medium mb-2">Valuation Analysis Unavailable</div>
+                    <div className="text-sm ghost">
+                      {isDemoMode 
+                        ? 'This demo ticker may not have complete EPS data. Try AAPL, MSFT, GOOGL, or META for full analysis.'
+                        : 'No forward EPS estimates available from analysts. This ticker may have limited coverage.'
+                      }
+                    </div>
+                  </div>
+                )}
+              </div>
+            </ErrorBoundary>
+          </section>
+
+          {/* COMPACT: Peers + Segments in one row */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <div className="lg:col-span-2">
               <ErrorBoundary fallback="Peers chart failed to load">
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-medium">Peers – Forward P/E vs Market Cap</div>
                     <div className="flex items-center gap-2">
                       {isDemoMode && (
-                        <span className="chip px-2 py-1 text-blue-400 text-xs">
-                          📊 Demo Comparison
-                        </span>
+                        <span className="chip px-2 py-1 text-blue-400 text-xs">📊 Demo</span>
                       )}
                       <button id="toggleLabelsBtn" className="btn text-xs">Labels: ON</button>
                     </div>
@@ -498,12 +447,12 @@ export default function ReportContent() {
                   {stockData?.peers?.length > 0 ? (
                     <div id="peersChart" className="chart"></div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-yellow-400 text-xl mb-2">🏢</div>
+                    <div className="text-center py-6">
+                      <div className="text-yellow-400 text-lg mb-2">🏢</div>
                       <div className="text-sm ghost">
                         {isDemoMode 
-                          ? 'Peer comparison data not available for this demo ticker. Try AAPL, MSFT, or GOOGL for full peer analysis.'
-                          : 'No peer comparison data available for this ticker'
+                          ? 'Try AAPL, MSFT, or GOOGL for peer analysis.'
+                          : 'No peer comparison data available'
                         }
                       </div>
                     </div>
@@ -512,55 +461,51 @@ export default function ReportContent() {
               </ErrorBoundary>
             </div>
             
-            <aside className="col-span-12 lg:col-span-4">
+            <div className="lg:col-span-1">
               <ErrorBoundary fallback="Segment chart failed to load">
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="font-medium">Revenue by Segment</div>
+                    <div className="font-medium">Revenue Segments</div>
                     {isDemoMode && (
-                      <span className="chip px-2 py-1 text-blue-400 text-xs">
-                        📈 Demo Data
-                      </span>
+                      <span className="chip px-2 py-1 text-blue-400 text-xs">📈</span>
                     )}
                   </div>
                   
                   {stockData?.segments?.length > 0 ? (
                     <div id="segmentPie" className="chart"></div>
                   ) : (
-                    <div className="text-center py-8">
-                      <div className="text-yellow-400 text-xl mb-2">📈</div>
+                    <div className="text-center py-6">
+                      <div className="text-yellow-400 text-lg mb-2">📈</div>
                       <div className="text-sm ghost">
                         {isDemoMode 
-                          ? 'Revenue segment breakdown not available for this demo ticker. Major companies like AAPL, MSFT, GOOGL have detailed segments.'
-                          : 'No revenue segment breakdown available for this ticker'
+                          ? 'Try major companies for segment data.'
+                          : 'No segment data available'
                         }
                       </div>
                     </div>
                   )}
                 </div>
               </ErrorBoundary>
-            </aside>
+            </div>
           </section>
 
-          {/* Investment Analysis */}
-          <section className="mt-4">
+          {/* COMPACT: Investment Analysis */}
+          <section className="mb-4">
             <ErrorBoundary fallback="Investment analysis section failed">
               <div className="card p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <div className="font-medium">Investment Analysis</div>
                   {isDemoMode && (
-                    <span className="chip px-2 py-1 text-blue-400 text-xs">
-                      🎯 Professional Analysis
-                    </span>
+                    <span className="chip px-2 py-1 text-blue-400 text-xs">🎯 Analysis</span>
                   )}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <div className="ghost text-sm mb-2 flex items-center gap-2">
                       <span className="text-green-400">✓</span> Key Investment Strengths
                     </div>
-                    <ul className="space-y-2 text-sm">
-                      {stockData?.strengths?.map((strength, i) => (
+                    <ul className="space-y-1 text-sm">
+                      {stockData?.strengths?.slice(0, 3).map((strength, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <span className="text-green-400 mt-1 text-xs">●</span>
                           <span className="leading-relaxed">{strength}</span>
@@ -568,7 +513,7 @@ export default function ReportContent() {
                       )) || (
                         <li className="flex items-start gap-2">
                           <span className="text-green-400 mt-1">●</span>
-                          <span>Loading investment strengths analysis...</span>
+                          <span>Loading analysis...</span>
                         </li>
                       )}
                     </ul>
@@ -577,8 +522,8 @@ export default function ReportContent() {
                     <div className="ghost text-sm mb-2 flex items-center gap-2">
                       <span className="text-red-400">⚠</span> Key Investment Risks
                     </div>
-                    <ul className="space-y-2 text-sm">
-                      {stockData?.risks?.map((risk, i) => (
+                    <ul className="space-y-1 text-sm">
+                      {stockData?.risks?.slice(0, 3).map((risk, i) => (
                         <li key={i} className="flex items-start gap-2">
                           <span className="text-red-400 mt-1 text-xs">●</span>
                           <span className="leading-relaxed">{risk}</span>
@@ -586,35 +531,25 @@ export default function ReportContent() {
                       )) || (
                         <li className="flex items-start gap-2">
                           <span className="text-red-400 mt-1">●</span>
-                          <span>Loading investment risks analysis...</span>
+                          <span>Loading analysis...</span>
                         </li>
                       )}
                     </ul>
                   </div>
                 </div>
-                
-                {isDemoMode && (
-                  <div className="mt-4 bg-blue-500/5 rounded-lg p-3 border border-blue-400/10">
-                    <div className="text-xs text-blue-300/70">
-                      💡 <span className="text-blue-400 font-medium">Professional Analysis:</span> These strengths and risks are based on 
-                      current business fundamentals, market positioning, and industry dynamics. In live mode, this analysis 
-                      would be enhanced with real-time financial metrics and market data.
-                    </div>
-                  </div>
-                )}
               </div>
             </ErrorBoundary>
           </section>
 
-          {/* Latest News */}
-          <section className="mt-4">
+          {/* COMPACT: Latest News */}
+          <section className="mb-4">
             <ErrorBoundary fallback="News section failed to load">
               <div className="card p-4">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-3">
                   <div className="font-medium">Latest Company News</div>
                   <div className="flex items-center gap-2 text-sm ghost">
                     {isDemoMode ? (
-                      <span className="chip px-2 py-1 text-blue-400 text-xs">📰 Demo News</span>
+                      <span className="chip px-2 py-1 text-blue-400 text-xs">📰 Demo</span>
                     ) : (
                       stockData?.newsSource === 'live' && <span className="text-green-400">● Live</span>
                     )}
@@ -623,69 +558,56 @@ export default function ReportContent() {
                 </div>
                 
                 {stockData?.news?.length > 0 ? (
-                  <ul className="divide-y divide-white/10">
-                    {stockData.news.slice(0, 6).map((item, i) => (
-                      <li key={i} className="py-3">
-                        <a 
-                          href={item.url} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="block hover:bg-white/5 -mx-2 px-2 py-2 rounded cursor-pointer transition-all duration-200 group"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="text-xs ghost">{item.source}</div>
-                            <div className="text-xs ghost">{item.datetime}</div>
-                          </div>
-                          <div className="text-sm group-hover:text-cyan-400 transition-colors font-medium mb-1">
-                            {item.headline}
-                          </div>
-                          {item.summary && item.summary !== item.headline && (
-                            <div className="text-xs ghost leading-relaxed">{item.summary}</div>
-                          )}
-                        </a>
-                      </li>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {stockData.news.slice(0, 4).map((item, i) => (
+                      <a 
+                        key={i}
+                        href={item.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="block hover:bg-white/5 p-3 rounded cursor-pointer transition-all duration-200 group border border-transparent hover:border-cyan-400/20"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-xs ghost">{item.source}</div>
+                          <div className="text-xs ghost">{item.datetime}</div>
+                        </div>
+                        <div className="text-sm group-hover:text-cyan-400 transition-colors font-medium mb-1">
+                          {item.headline}
+                        </div>
+                        {item.summary && item.summary !== item.headline && (
+                          <div className="text-xs ghost leading-relaxed line-clamp-2">{item.summary}</div>
+                        )}
+                      </a>
                     ))}
-                  </ul>
+                  </div>
                 ) : (
-                  <div className="text-center py-8">
-                    <div className="text-yellow-400 text-xl mb-2">📰</div>
+                  <div className="text-center py-4">
+                    <div className="text-yellow-400 text-lg mb-2">📰</div>
                     <div className="text-sm ghost">
                       {isDemoMode 
-                        ? `No recent news available in demo for ${ticker}. Major stocks like AAPL, MSFT, GOOGL have sample news articles.`
-                        : `No recent news available for ${ticker}`
+                        ? `Try AAPL, MSFT, GOOGL for sample news`
+                        : `No recent news for ${ticker}`
                       }
-                    </div>
-                  </div>
-                )}
-
-                {isDemoMode && stockData?.news?.length > 0 && (
-                  <div className="mt-4 bg-blue-500/5 rounded-lg p-3 border border-blue-400/10">
-                    <div className="text-xs text-blue-300/70">
-                      📡 <span className="text-blue-400 font-medium">News Integration:</span> In live mode, this section automatically 
-                      pulls the latest company-specific news, earnings announcements, and analyst updates from premium financial news sources.
                     </div>
                   </div>
                 )}
               </div>
             </ErrorBoundary>
           </section>
-          
+
+          {/* Footer CTA */}
           {isDemoMode && (
-            <div className="mt-8">
-              <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
-                <div className="text-center">
-                  <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
-                  <div className="text-sm ghost mb-4">
-                    This demo showcases institutional-grade stock analysis. When you're ready to launch with real-time data, 
-                    simply switch to live API mode and all features will work with current market data.
-                  </div>
-                  <div className="flex flex-wrap justify-center gap-2 text-xs">
-                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Forward EPS Estimates</span>
-                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Dynamic P/E Bands</span>
-                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Peer Comparisons</span>
-                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Quality Scoring</span>
-                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Real-time News</span>
-                  </div>
+            <div className="card p-4 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
+              <div className="text-center">
+                <div className="text-blue-400 font-semibold mb-2">🚀 Ready for Live Data?</div>
+                <div className="text-sm ghost mb-3">
+                  This demo showcases institutional-grade analysis. Switch to live APIs for real-time data.
+                </div>
+                <div className="flex flex-wrap justify-center gap-2 text-xs">
+                  <span className="chip px-2 py-1 bg-green-500/20 text-green-400">✓ EPS Estimates</span>
+                  <span className="chip px-2 py-1 bg-green-500/20 text-green-400">✓ P/E Bands</span>
+                  <span className="chip px-2 py-1 bg-green-500/20 text-green-400">✓ Peer Analysis</span>
+                  <span className="chip px-2 py-1 bg-green-500/20 text-green-400">✓ Quality Scores</span>
                 </div>
               </div>
             </div>
