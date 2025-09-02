@@ -153,99 +153,137 @@ export default function ReportContent() {
           {/* Enhanced Ticker Search Header */}
           <div className="mb-6">
             <div className="card p-4">
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-                <form onSubmit={handleSearch} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={inputTicker}
-                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                    placeholder="Enter ticker (e.g., GOOGL, CRM, SHOP...)"
-                    className="px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
-                  />
-                  <button type="submit" className="btn-primary px-4 py-2 rounded-lg" disabled={loading}>
-                    Analyze
-                  </button>
-                </form>
-                
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={inputTicker}
+                  onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                  placeholder="Enter ticker (e.g., MSFT)"
+                  className="px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none flex-1"
+                />
+                <button type="submit" onClick={handleSearch} className="btn-primary px-4 py-2 rounded-lg">
+                  Analyze
+                </button>
+                <span className="text-sm ghost px-2 py-2">Quick search available stocks</span>
+              </div>
+              
+              {/* Mega Cap Tech */}
+              <div className="mb-3">
+                <div className="text-sm font-medium text-white mb-2">Mega Cap Tech</div>
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-sm ghost">Categories:</span>
-                  
-                  {/* Tech Giants */}
-                  <div className="flex flex-wrap gap-1">
-                    <span className="text-xs ghost px-2 py-1">Tech Giants:</span>
-                    {['AAPL', 'MSFT', 'GOOGL', 'META', 'NVDA', 'AMZN'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => loadStockData(t)}
-                        className={`chip px-2 py-1 text-xs transition-all relative ${
-                          ticker === t 
-                            ? 'bg-cyan-400/20 text-cyan-400 border-cyan-400/40' 
-                            : 'hover:bg-white/10 hover:border-white/20'
-                        }`}
-                      >
-                        {t}
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full"></span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Growth Stocks */}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="text-xs ghost px-2 py-1">Growth:</span>
-                    {['CRM', 'SHOP', 'NOW', 'TSLA', 'NFLX'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => loadStockData(t)}
-                        className={`chip px-2 py-1 text-xs transition-all relative ${
-                          ticker === t 
-                            ? 'bg-cyan-400/20 text-cyan-400 border-cyan-400/40' 
-                            : 'hover:bg-white/10 hover:border-white/20'
-                        }`}
-                      >
-                        {t}
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full"></span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Healthcare & Financials */}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className="text-xs ghost px-2 py-1">Health & Finance:</span>
-                    {['ISRG', 'UNH', 'JPM', 'BAC', 'BRK.B'].map(t => (
-                      <button
-                        key={t}
-                        onClick={() => loadStockData(t)}
-                        className={`chip px-2 py-1 text-xs transition-all relative ${
-                          ticker === t 
-                            ? 'bg-cyan-400/20 text-cyan-400 border-cyan-400/40' 
-                            : 'hover:bg-white/10 hover:border-white/20'
-                        }`}
-                      >
-                        {t}
-                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-400 rounded-full"></span>
-                      </button>
-                    ))}
-                  </div>
-
-                  <span className="chip px-2 py-1 text-xs text-gray-400 mt-1">
-                    +{availableTickers.length - 16} more stocks available
-                  </span>
+                  {['AAPL', 'MSFT', 'GOOGL', 'NVDA', 'META', 'AMZN'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`px-3 py-1 text-sm rounded transition-all ${
+                        ticker === t 
+                          ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-3 text-xs">
-                <span className="ghost">Data Quality:</span>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span className="text-green-400">Real Data</span>
+              {/* Growth & AI */}
+              <div className="mb-3">
+                <div className="text-sm font-medium text-white mb-2">Growth & AI</div>
+                <div className="flex flex-wrap gap-2">
+                  {['CRM', 'SNOW', 'PLTR', 'CRWD', 'ZM', 'SHOP'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`px-3 py-1 text-sm rounded transition-all ${
+                        ticker === t 
+                          ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                  <span className="text-yellow-400">Mixed</span>
+              </div>
+
+              {/* Healthcare */}
+              <div className="mb-3">
+                <div className="text-sm font-medium text-white mb-2">Healthcare</div>
+                <div className="flex flex-wrap gap-2">
+                  {['LLY', 'ISRG'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`px-3 py-1 text-sm rounded transition-all ${
+                        ticker === t 
+                          ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                  <span className="text-red-400">Estimated</span>
+              </div>
+
+              {/* Financial */}
+              <div className="mb-3">
+                <div className="text-sm font-medium text-white mb-2">Financial</div>
+                <div className="flex flex-wrap gap-2">
+                  {['HOOD', 'COIN', 'BAC'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`px-3 py-1 text-sm rounded transition-all ${
+                        ticker === t 
+                          ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Consumer */}
+              <div className="mb-3">
+                <div className="text-sm font-medium text-white mb-2">Consumer</div>
+                <div className="flex flex-wrap gap-2">
+                  {['TSLA', 'NFLX', 'HD', 'MCD', 'NKE', 'KO', 'DIS'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`px-3 py-1 text-sm rounded transition-all ${
+                        ticker === t 
+                          ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Other */}
+              <div className="mb-3">
+                <div className="text-sm font-medium text-white mb-2">Other</div>
+                <div className="flex flex-wrap gap-2">
+                  {['NOW', 'AMD', 'QCOM', 'TSM', 'INTC', 'UNH', 'JPM', 'XYZ', 'UBER', 'WMT', 'COST', '700.HK', '9988.HK', '3690.HK', '1810.HK'].map(t => (
+                    <button
+                      key={t}
+                      onClick={() => loadStockData(t)}
+                      className={`px-3 py-1 text-sm rounded transition-all ${
+                        ticker === t 
+                          ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40' 
+                          : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
