@@ -1,10 +1,11 @@
-// components/ReportContent.js - Updated with Professional Demo Mode
+// components/ReportContent.js - Theme Aware Version
 'use client'
 import { useEffect, useState } from 'react'
 import Navigation from './Navigation'
-import { initCharts } from './ChartComponents'
+import { initCharts, updateChartsTheme } from './ChartComponents'
 import { fetchStockData, getAvailableTickers } from '@/lib/api'
 import { ErrorBoundary } from './ErrorBoundary'
+import { useTheme } from '@/contexts/ThemeContext'
 
 export default function ReportContent() {
   const [stockData, setStockData] = useState(null)
@@ -13,6 +14,7 @@ export default function ReportContent() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [updateKey, setUpdateKey] = useState(0)
+  const { theme } = useTheme()
 
   // Get available tickers (demo or live)
   const availableTickers = getAvailableTickers()
@@ -20,6 +22,16 @@ export default function ReportContent() {
   useEffect(() => {
     loadStockData('AAPL')
   }, [])
+
+  // Update charts when theme changes
+  useEffect(() => {
+    if (stockData) {
+      // Small delay to ensure CSS variables are updated
+      setTimeout(() => {
+        initCharts(stockData)
+      }, 150)
+    }
+  }, [theme])
 
   const loadStockData = async (symbol) => {
     setLoading(true)
@@ -146,7 +158,9 @@ export default function ReportContent() {
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                     <div>
-                      <div className="text-blue-400 font-semibold">🎯 Professional Demo Mode</div>
+                      <div className="text-blue-400 font-semibold">
+                        🎯 Professional Demo Mode {theme === 'light' ? '☀️' : '🌙'}
+                      </div>
                       <div className="text-sm text-blue-300/80">
                         Exploring comprehensive stock analysis with realistic January 2025 data
                       </div>
@@ -170,7 +184,7 @@ export default function ReportContent() {
                     value={inputTicker}
                     onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
                     placeholder={isDemoMode ? "Try GOOGL, MSFT, TSLA..." : "Enter ticker (e.g., MSFT)"}
-                    className="px-3 py-2 bg-black/30 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
+                    className="px-3 py-2 border rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
                   />
                   <button 
                     type="submit" 
@@ -234,6 +248,7 @@ export default function ReportContent() {
                         Full institutional-grade analysis with forward EPS estimates, dynamic P/E valuation bands, 
                         peer comparisons, and comprehensive financial health scoring. 
                         <span className="text-blue-400 font-medium"> Ready to go live with real APIs.</span>
+                        <span className="ml-2">Switch themes anytime using the toggle in the navigation!</span>
                       </div>
                     </div>
                   </div>
@@ -242,7 +257,7 @@ export default function ReportContent() {
             </div>
           </div>
 
-          {/* Stock Header with Enhanced Demo Styling */}
+          {/* Stock Header */}
           <header className="mb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-baseline gap-3">
@@ -272,7 +287,7 @@ export default function ReportContent() {
             </div>
           </header>
 
-          {/* FIXED: Score Cards Section - All Same Size */}
+          {/* Score Cards Section - All Same Size */}
           <section className="grid grid-cols-12 gap-4 relative">
             <aside className="col-span-12 lg:col-span-3 lg:sticky lg:top-20 self-start z-0 space-y-3">
               <ErrorBoundary fallback="Score display failed">
@@ -343,7 +358,7 @@ export default function ReportContent() {
                 </div>
               </ErrorBoundary>
 
-              {/* FIXED: Valuation Analysis - Reduced Space */}
+              {/* Valuation Analysis */}
               <ErrorBoundary fallback="Valuation chart failed to load">
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-2">
@@ -385,6 +400,7 @@ export default function ReportContent() {
             </div>
           </section>
 
+          {/* Rest of sections */}
           <section className="grid grid-cols-12 gap-4 mt-4">
             <div className="col-span-12 lg:col-span-8">
               <ErrorBoundary fallback="Peers chart failed to load">
@@ -448,6 +464,7 @@ export default function ReportContent() {
             </aside>
           </section>
 
+          {/* Investment Analysis */}
           <section className="mt-4">
             <ErrorBoundary fallback="Investment analysis section failed">
               <div className="card p-4">
@@ -511,6 +528,7 @@ export default function ReportContent() {
             </ErrorBoundary>
           </section>
 
+          {/* Latest News */}
           <section className="mt-4">
             <ErrorBoundary fallback="News section failed to load">
               <div className="card p-4">
