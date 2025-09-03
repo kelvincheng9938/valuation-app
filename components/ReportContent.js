@@ -1,4 +1,4 @@
-// components/ReportContent.js - SimplyWall.St Style Layout with Better UI
+// components/ReportContent.js - Professional SimplyWall.St Style Interface
 'use client'
 import { useEffect, useState } from 'react'
 import Navigation from './Navigation'
@@ -18,15 +18,15 @@ export default function ReportContent() {
 
   const availableTickers = getAvailableTickers()
 
-  // Organize tickers by categories
+  // Categorized tickers for better UX
   const tickerCategories = {
     'Tech Giants': ['AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA'],
+    'Growth Tech': ['CRM', 'NOW', 'NFLX', 'TSLA', 'AMD', 'QCOM'],
     'Healthcare': ['LLY', 'UNH', 'ISRG'],
-    'Financials': ['BAC', 'JPM', 'BRK.B'],
-    'Consumer': ['COST', 'HD', 'DIS', 'NKE', 'SBUX', 'LULU', 'KO', 'MCD'],
-    'Industrials': ['CAT', 'FDX'],
-    'HK Stocks': ['700 HK Equity', '3690 HK Equity', '1810 HK Equity', '9988 HK Equity'],
-    'Other': ['WMT', 'ABNB', 'AMD', 'QCOM', 'INTC', 'AMAT', 'ASML', 'CRM', 'NOW', 'NFLX', 'TSLA', 'UBER', 'COIN']
+    'Financials': ['BRK.B', 'BAC', 'JPM'],
+    'Consumer': ['COST', 'HD', 'DIS', 'NKE', 'MCD', 'SBUX', 'WMT'],
+    'HK Stocks': ['700 HK', '3690 HK', '1810 HK', '9988 HK'],
+    'Others': ['INTC', 'AMAT', 'ASML', 'FDX', 'CAT', 'LULU', 'KO', 'ABNB']
   }
 
   useEffect(() => {
@@ -50,14 +50,14 @@ export default function ReportContent() {
       setUpdateKey(prev => prev + 1)
       setActiveSection('overview')
       
-      // Initialize charts with delay
+      // Initialize charts
       setTimeout(async () => {
         try {
           await initCharts(data)
         } catch (chartError) {
           console.error('Chart initialization error:', chartError)
         }
-      }, 300)
+      }, 500)
       
     } catch (error) {
       console.error('Error loading stock data:', error)
@@ -80,7 +80,7 @@ export default function ReportContent() {
     setActiveSection(sectionId)
     const element = document.getElementById(sectionId)
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      element.scrollIntoView({ behavior: 'smooth' })
     }
   }
 
@@ -123,440 +123,383 @@ export default function ReportContent() {
     )
   }
 
-  if (!stockData) {
-    return (
-      <>
-        <Navigation />
-        <div className="max-w-7xl mx-auto px-4 py-5">
-          <div className="card p-8 text-center">
-            <div className="text-lg">No data loaded</div>
-          </div>
-        </div>
-      </>
-    )
-  }
-
   return (
     <>
       <Navigation />
-      <ErrorBoundary fallback="Report failed to load. Please refresh the page.">
-        <div className="max-w-7xl mx-auto px-4 py-5" key={updateKey}>
-          
-          {/* Demo Mode Header */}
-          {isDemoMode && (
-            <div className="mb-6">
-              <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
-                  <div>
-                    <div className="text-blue-400 font-semibold">🎯 Professional Demo Mode</div>
-                    <div className="text-sm text-blue-300/80">
-                      Comprehensive stock analysis with updated January 2025 financial data
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Enhanced Colorful Search Bar */}
-          <div className="mb-6">
-            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border border-blue-400/20 p-6">
-              <form onSubmit={handleSearch} className="mb-6">
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    value={inputTicker}
-                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                    placeholder="🔍 Enter ticker symbol (e.g., AAPL, MSFT, GOOGL...)"
-                    className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-blue-200 focus:border-cyan-400 focus:outline-none focus:bg-white/15 transition-all"
-                  />
-                  <button 
-                    type="submit" 
-                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 px-6 py-3 rounded-xl font-semibold text-white shadow-lg hover:shadow-cyan-500/25 transition-all"
-                  >
-                    Analyze
-                  </button>
-                </div>
-              </form>
-              
-              {/* Organized Stock Categories */}
-              <div className="space-y-4">
-                {Object.entries(tickerCategories).slice(0, showAllTickers ? undefined : 4).map(([category, tickers]) => (
-                  <div key={category} className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-medium text-blue-300">{category}</div>
-                      <div className="h-px bg-blue-400/20 flex-1"></div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {tickers.filter(t => availableTickers.includes(t)).map(t => (
-                        <button
-                          key={t}
-                          onClick={() => loadStockData(t)}
-                          className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                            ticker === t 
-                              ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg' 
-                              : 'bg-white/10 text-blue-100 hover:bg-white/20 hover:text-white'
-                          }`}
-                        >
-                          {t.replace(' HK Equity', '')}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                
-                <div className="flex justify-center pt-2">
-                  <button
-                    onClick={() => setShowAllTickers(!showAllTickers)}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-blue-200 hover:text-white transition-all"
-                  >
-                    {showAllTickers ? '🔼 Show Less' : '🔽 Show More Categories'}
-                  </button>
-                </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800" key={updateKey}>
+        
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 border-b border-blue-500/30">
+            <div className="max-w-7xl mx-auto px-4 py-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                <span className="text-blue-300 text-sm font-medium">
+                  🎯 Professional Demo Mode - Comprehensive analysis with updated January 2025 data
+                </span>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Stock Header */}
-          <header className="mb-6">
-            <div className="card p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-white mb-2">
-                    {stockData.name} ({ticker})
-                  </h1>
-                  <div className="flex items-center gap-4 text-sm">
-                    <span className="text-blue-400">{stockData.sector}</span>
-                    <span className="text-gray-400">Market Cap: {stockData.marketCap}</span>
+        {/* Enhanced Search Section */}
+        <div className="bg-gradient-to-r from-gray-800 to-gray-700 border-b border-gray-600">
+          <div className="max-w-7xl mx-auto px-4 py-6">
+            
+            {/* Search Bar */}
+            <form onSubmit={handleSearch} className="flex gap-3 mb-6">
+              <input
+                type="text"
+                value={inputTicker}
+                onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                placeholder="Enter ticker symbol (e.g. AAPL, MSFT, TSLA...)"
+                className="flex-1 px-4 py-3 bg-gray-900 border-2 border-gray-600 rounded-xl text-white placeholder-gray-400 focus:border-cyan-400 focus:outline-none transition-colors text-lg"
+              />
+              <button 
+                type="submit" 
+                className="px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl"
+                disabled={loading}
+              >
+                Analyze
+              </button>
+            </form>
+
+            {/* Categorized Tickers */}
+            <div className="space-y-4">
+              {Object.entries(tickerCategories).slice(0, showAllTickers ? undefined : 4).map(([category, tickers]) => (
+                <div key={category} className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-300">{category}:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {tickers.map(t => (
+                      <button
+                        key={t}
+                        onClick={() => loadStockData(t)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                          ticker === t.replace(' HK', '') 
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-md' 
+                            : 'bg-gray-700 hover:bg-gray-600 text-gray-300 hover:text-white border border-gray-600 hover:border-gray-500'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-3xl font-bold text-white mb-1">
-                    ${stockData.price?.toFixed(2)}
-                  </div>
-                  <div className={`text-lg font-semibold ${stockData.changePercent > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {stockData.changePercent > 0 ? '+' : ''}{stockData.change?.toFixed(2)} 
-                    ({stockData.changePercent > 0 ? '+' : ''}{stockData.changePercent?.toFixed(2)}%)
-                  </div>
-                </div>
+              ))}
+              
+              {/* Show More/Less Button */}
+              <div className="text-center pt-2">
+                <button
+                  onClick={() => setShowAllTickers(!showAllTickers)}
+                  className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors"
+                >
+                  {showAllTickers ? '↑ Show Less Categories' : '↓ Show More Categories'}
+                </button>
               </div>
             </div>
-          </header>
+          </div>
+        </div>
 
-          {/* Main Layout - SimplyWall.St Style */}
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-12 gap-6">
             
-            {/* Left Sidebar - Table of Contents */}
-            <aside className="col-span-12 lg:col-span-3">
-              <div className="card p-4 sticky top-20">
-                <div className="text-sm font-medium text-blue-300 mb-4">Stock Analysis</div>
-                <nav className="space-y-2">
-                  <button
-                    onClick={() => scrollToSection('overview')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      activeSection === 'overview' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    1. Company Overview
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('valuation')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      activeSection === 'valuation' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    2. Valuation
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('quality')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      activeSection === 'quality' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    3. Quality Analysis
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('peers')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      activeSection === 'peers' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    4. Peer Comparison
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('analysis')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      activeSection === 'analysis' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    5. Investment Analysis
-                  </button>
-                  <button
-                    onClick={() => scrollToSection('news')}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all ${
-                      activeSection === 'news' 
-                        ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
-                        : 'text-gray-300 hover:text-white hover:bg-white/5'
-                    }`}
-                  >
-                    6. Latest News
-                  </button>
-                </nav>
+            {/* Left Sidebar - Table of Contents (SimplyWall.St Style) */}
+            <div className="col-span-12 lg:col-span-3">
+              <div className="sticky top-24 space-y-2">
+                <div className="card p-4">
+                  <h3 className="text-lg font-bold mb-4 text-white">Stock Analysis</h3>
+                  <nav className="space-y-1">
+                    {[
+                      { id: 'overview', label: '1. Company Overview', icon: '🏢' },
+                      { id: 'valuation', label: '2. Valuation', icon: '💰' },
+                      { id: 'quality', label: '3. Quality Analysis', icon: '⭐' },
+                      { id: 'peers', label: '4. Peer Comparison', icon: '🏢' },
+                      { id: 'investment', label: '5. Investment Analysis', icon: '📊' },
+                      { id: 'news', label: '6. Latest News', icon: '📰' }
+                    ].map(section => (
+                      <button
+                        key={section.id}
+                        onClick={() => scrollToSection(section.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 flex items-center gap-3 ${
+                          activeSection === section.id
+                            ? 'bg-cyan-500/20 text-cyan-400 border-l-2 border-cyan-400'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                        }`}
+                      >
+                        <span className="text-base">{section.icon}</span>
+                        <span className="font-medium">{section.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
 
-                {/* Data Sources */}
+                {/* Demo Info Panel */}
                 {isDemoMode && (
-                  <div className="mt-6 pt-4 border-t border-white/10">
-                    <div className="text-xs font-medium text-blue-300 mb-2">📊 Bloomberg Data</div>
-                    <div className="text-xs text-blue-200/70">
-                      Professional analysis with verified
-                      Bloomberg Terminal data including HK
-                      stocks.
+                  <div className="card p-4 bg-blue-500/5 border-blue-400/20">
+                    <div className="flex items-start gap-3">
+                      <span className="text-blue-400 text-sm">📊</span>
+                      <div>
+                        <div className="text-blue-400 font-medium text-sm mb-1">Bloomberg Data</div>
+                        <div className="text-xs text-blue-300/70 leading-relaxed">
+                          Professional analysis with verified Bloomberg Terminal data including HK stocks.
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
-            </aside>
+            </div>
 
             {/* Right Content */}
             <div className="col-span-12 lg:col-span-9 space-y-6">
               
-              {/* Company Overview Section */}
-              <section id="overview" className="scroll-mt-20">
-                <div className="card p-6">
-                  <h2 className="text-xl font-bold mb-4 text-white">Company Overview</h2>
-                  
-                  {/* Quality Scores Row */}
-                  <div className="grid grid-cols-4 gap-4 mb-6">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-orange-400 mb-1">
-                        {stockData.scores?.value?.toFixed(1) || '0.0'}
-                      </div>
-                      <div className="text-sm text-gray-400">Value</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-blue-400 mb-1">
-                        {stockData.scores?.growth?.toFixed(1) || '0.0'}
-                      </div>
-                      <div className="text-sm text-gray-400">Growth</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-green-400 mb-1">
-                        {stockData.scores?.profit?.toFixed(1) || '0.0'}
-                      </div>
-                      <div className="text-sm text-gray-400">Profit</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-purple-400 mb-1">
-                        {stockData.scores?.momentum?.toFixed(1) || '0.0'}
-                      </div>
-                      <div className="text-sm text-gray-400">Momentum</div>
+              {/* Stock Header */}
+              <div id="overview" className="card p-6">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">
+                      {stockData?.name || 'Loading...'}
+                      <span className="text-lg text-gray-400 ml-2">({ticker})</span>
+                      {isDemoMode && (
+                        <span className="ml-3 text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded">
+                          DEMO
+                        </span>
+                      )}
+                    </h1>
+                    <div className="text-gray-400 text-sm">
+                      Updated: {stockData?.lastUpdated ? new Date(stockData.lastUpdated).toLocaleString() : 'Just now'}
                     </div>
                   </div>
-
-                  {/* Valuation Bar */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-                      <span>Undervalued</span>
-                      <span>Fair Value</span>
-                      <span>Overvalued</span>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-white">
+                      ${stockData?.price?.toFixed(2) || '0.00'}
                     </div>
-                    <div className="relative h-3 bg-gradient-to-r from-green-400 via-yellow-400 to-red-400 rounded-full">
-                      <div className="absolute top-0 left-1/3 w-1 h-3 bg-white rounded-full shadow-lg"></div>
-                    </div>
-                    <div className="text-center mt-2">
-                      <span className="text-xs text-gray-400">Current Price</span>
-                    </div>
+                    {stockData?.changePercent && (
+                      <div className={`text-lg font-medium ${stockData.changePercent > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {stockData.changePercent > 0 ? '+' : ''}{stockData.change?.toFixed(2)} 
+                        ({stockData.changePercent > 0 ? '+' : ''}{stockData.changePercent.toFixed(2)}%)
+                      </div>
+                    )}
                   </div>
+                </div>
 
-                  <p className="text-gray-300 leading-relaxed mb-6">{stockData.description}</p>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <div className="text-xs text-gray-400 mb-1">Market Cap</div>
-                      <div className="text-lg font-semibold text-white">{stockData.marketCap}</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <div className="text-xs text-gray-400 mb-1">Forward P/E</div>
-                      <div className="text-lg font-semibold text-white">{stockData.forwardPE}</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <div className="text-xs text-gray-400 mb-1">TTM P/E</div>
-                      <div className="text-lg font-semibold text-white">{stockData.ttmPE}</div>
-                    </div>
-                    <div className="bg-white/5 rounded-lg p-4">
-                      <div className="text-xs text-gray-400 mb-1">Sector</div>
-                      <div className="text-lg font-semibold text-white">{stockData.sector}</div>
+                {/* Company Description & Key Stats */}
+                <div className="grid lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2">
+                    <h3 className="text-lg font-semibold text-white mb-3">About the Company</h3>
+                    <p className="text-gray-300 leading-relaxed">
+                      {stockData?.description || 'Loading company information...'}
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-white mb-3">Key Stats</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-gray-700/30 p-3 rounded-lg">
+                        <div className="text-xs text-gray-400">Market Cap</div>
+                        <div className="text-lg font-bold text-white">{stockData?.marketCap || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gray-700/30 p-3 rounded-lg">
+                        <div className="text-xs text-gray-400">Forward P/E</div>
+                        <div className="text-lg font-bold text-white">{stockData?.forwardPE || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gray-700/30 p-3 rounded-lg">
+                        <div className="text-xs text-gray-400">TTM P/E</div>
+                        <div className="text-lg font-bold text-white">{stockData?.ttmPE || 'N/A'}</div>
+                      </div>
+                      <div className="bg-gray-700/30 p-3 rounded-lg">
+                        <div className="text-xs text-gray-400">Sector</div>
+                        <div className="text-lg font-bold text-white">{stockData?.sector || 'Unknown'}</div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </section>
+              </div>
 
               {/* Valuation Section */}
-              <section id="valuation" className="scroll-mt-20">
-                <div className="card p-6">
-                  <h2 className="text-xl font-bold mb-4 text-white">Valuation Analysis</h2>
-                  
-                  {stockData.eps?.values?.length > 0 && stockData.peBands ? (
-                    <>
-                      <div className="flex items-center gap-4 text-sm mb-4 flex-wrap">
-                        <span className="bg-white/10 px-3 py-1 rounded-full">
-                          EPS: {stockData.eps.values.map(v => v.toFixed(2)).join(' / ')}
-                        </span>
-                        <span className="bg-white/10 px-3 py-1 rounded-full">
-                          P/E Bands: {stockData.peBands.low.toFixed(1)}× / {stockData.peBands.mid.toFixed(1)}× / {stockData.peBands.high.toFixed(1)}×
-                        </span>
-                        <span className="bg-white/10 px-3 py-1 rounded-full">
-                          Current Price: ${stockData.price?.toFixed(2)}
+              <div id="valuation" className="card p-6">
+                <h2 className="text-2xl font-bold text-white mb-4">Valuation Analysis</h2>
+                
+                {stockData?.eps?.values?.length > 0 && stockData?.peBands ? (
+                  <>
+                    <div className="flex flex-wrap items-center gap-4 mb-4">
+                      <div className="bg-gray-700/50 px-4 py-2 rounded-lg">
+                        <span className="text-gray-400 text-sm">EPS Estimates: </span>
+                        <span className="text-white font-medium">
+                          {stockData.eps.values.map(v => v.toFixed(2)).join(' / ')}
                         </span>
                       </div>
-                      <div id="valuationChart" className="chart-lg"></div>
-                    </>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="text-4xl mb-4">📊</div>
-                      <div className="text-lg font-medium text-gray-300 mb-2">Valuation Analysis Unavailable</div>
-                      <div className="text-sm text-gray-400">No forward EPS estimates available from analysts</div>
+                      <div className="bg-gray-700/50 px-4 py-2 rounded-lg">
+                        <span className="text-gray-400 text-sm">P/E Bands: </span>
+                        <span className="text-white font-medium">
+                          {stockData.peBands.low.toFixed(1)}× / {stockData.peBands.mid.toFixed(1)}× / {stockData.peBands.high.toFixed(1)}×
+                        </span>
+                      </div>
+                      <div className="bg-gray-700/50 px-4 py-2 rounded-lg">
+                        <span className="text-gray-400 text-sm">Current: </span>
+                        <span className="text-white font-medium">${stockData.price?.toFixed(2)}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </section>
-
-              {/* Quality Analysis Section */}
-              <section id="quality" className="scroll-mt-20">
-                <div className="card p-6">
-                  <h2 className="text-xl font-bold mb-4 text-white">Quality Analysis</h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-medium mb-3 text-gray-300">Quality Radar</h3>
-                      <div id="qualityRadar" className="chart"></div>
-                    </div>
-                    <div>
-                      <h3 className="font-medium mb-3 text-gray-300">Revenue by Segment</h3>
-                      {stockData.segments?.length > 0 ? (
-                        <div id="segmentPie" className="chart"></div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <div className="text-2xl mb-2">📈</div>
-                          <div className="text-sm text-gray-400">No segment data available</div>
-                        </div>
-                      )}
+                    <div id="valuationChart" className="h-96 w-full"></div>
+                  </>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-yellow-400 text-3xl mb-3">📊</div>
+                    <div className="text-xl font-medium text-white mb-2">Valuation Analysis Unavailable</div>
+                    <div className="text-gray-400">
+                      No forward EPS estimates available for this ticker
                     </div>
                   </div>
-                </div>
-              </section>
+                )}
+              </div>
 
-              {/* Peer Comparison Section */}
-              <section id="peers" className="scroll-mt-20">
+              {/* Quality Analysis */}
+              <div id="quality" className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 card p-6">
+                  <h2 className="text-2xl font-bold text-white mb-4">Quality Scores</h2>
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-gradient-to-r from-orange-500/20 to-orange-600/20 p-4 rounded-xl border border-orange-500/30">
+                      <div className="text-orange-400 text-sm font-medium">Value Score</div>
+                      <div className="text-3xl font-bold text-white">{stockData?.scores?.value?.toFixed(1) || '0.0'}</div>
+                    </div>
+                    <div className="bg-gradient-to-r from-blue-500/20 to-blue-600/20 p-4 rounded-xl border border-blue-500/30">
+                      <div className="text-blue-400 text-sm font-medium">Growth Score</div>
+                      <div className="text-3xl font-bold text-white">{stockData?.scores?.growth?.toFixed(1) || '0.0'}</div>
+                    </div>
+                    <div className="bg-gradient-to-r from-green-500/20 to-green-600/20 p-4 rounded-xl border border-green-500/30">
+                      <div className="text-green-400 text-sm font-medium">Profitability</div>
+                      <div className="text-3xl font-bold text-white">{stockData?.scores?.profit?.toFixed(1) || '0.0'}</div>
+                    </div>
+                    <div className="bg-gradient-to-r from-purple-500/20 to-purple-600/20 p-4 rounded-xl border border-purple-500/30">
+                      <div className="text-purple-400 text-sm font-medium">Momentum</div>
+                      <div className="text-3xl font-bold text-white">{stockData?.scores?.momentum?.toFixed(1) || '0.0'}</div>
+                    </div>
+                  </div>
+                  <div id="band-spark" className="h-16 w-full"></div>
+                </div>
+                
                 <div className="card p-6">
+                  <h3 className="text-lg font-bold text-white mb-4">Quality Radar</h3>
+                  <div id="qualityRadar" className="h-64 w-full"></div>
+                </div>
+              </div>
+
+              {/* Peers and Segments */}
+              <div id="peers" className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 card p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold text-white">Peer Comparison</h2>
-                    <button id="toggleLabelsBtn" className="btn text-xs">Labels: ON</button>
+                    <h2 className="text-2xl font-bold text-white">Peers Comparison</h2>
+                    <button id="toggleLabelsBtn" className="bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded-lg text-xs text-gray-300">
+                      Labels: ON
+                    </button>
                   </div>
                   
-                  {stockData.peers?.length > 0 ? (
-                    <div id="peersChart" className="chart"></div>
+                  {stockData?.peers?.length > 0 ? (
+                    <div id="peersChart" className="h-80 w-full"></div>
                   ) : (
                     <div className="text-center py-12">
-                      <div className="text-4xl mb-4">🏢</div>
-                      <div className="text-lg font-medium text-gray-300 mb-2">No Peer Data Available</div>
-                      <div className="text-sm text-gray-400">This ticker may have limited industry coverage</div>
+                      <div className="text-yellow-400 text-2xl mb-2">🏢</div>
+                      <div className="text-gray-400">No peer comparison data available</div>
                     </div>
                   )}
                 </div>
-              </section>
-
-              {/* Investment Analysis Section */}
-              <section id="analysis" className="scroll-mt-20">
+                
                 <div className="card p-6">
-                  <h2 className="text-xl font-bold mb-6 text-white">Investment Analysis</h2>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div>
-                      <h3 className="font-medium mb-4 text-green-400 flex items-center gap-2">
-                        <span>✓</span> Key Investment Strengths
-                      </h3>
-                      <ul className="space-y-3">
-                        {stockData.strengths?.map((strength, i) => (
-                          <li key={i} className="flex items-start gap-3">
-                            <span className="text-green-400 mt-1 text-sm">●</span>
-                            <span className="text-gray-300 text-sm leading-relaxed">{strength}</span>
-                          </li>
-                        )) || (
-                          <li className="text-gray-400">Loading strengths analysis...</li>
-                        )}
-                      </ul>
+                  <h3 className="text-xl font-bold text-white mb-4">Revenue by Segment</h3>
+                  
+                  {stockData?.segments?.length > 0 ? (
+                    <div id="segmentPie" className="h-80 w-full"></div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <div className="text-yellow-400 text-xl mb-2">📈</div>
+                      <div className="text-gray-400 text-sm">No segment data available</div>
                     </div>
-                    <div>
-                      <h3 className="font-medium mb-4 text-red-400 flex items-center gap-2">
-                        <span>⚠</span> Key Investment Risks
-                      </h3>
-                      <ul className="space-y-3">
-                        {stockData.risks?.map((risk, i) => (
-                          <li key={i} className="flex items-start gap-3">
-                            <span className="text-red-400 mt-1 text-sm">●</span>
-                            <span className="text-gray-300 text-sm leading-relaxed">{risk}</span>
-                          </li>
-                        )) || (
-                          <li className="text-gray-400">Loading risks analysis...</li>
-                        )}
-                      </ul>
+                  )}
+                </div>
+              </div>
+
+              {/* Investment Analysis */}
+              <div id="investment" className="card p-6">
+                <h2 className="text-2xl font-bold text-white mb-6">Investment Analysis</h2>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-green-400 text-xl">✓</span>
+                      <h3 className="text-lg font-semibold text-green-400">Investment Strengths</h3>
                     </div>
+                    <ul className="space-y-3">
+                      {stockData?.strengths?.map((strength, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="text-green-400 mt-2 text-xs">●</span>
+                          <span className="text-gray-300 leading-relaxed">{strength}</span>
+                        </li>
+                      )) || (
+                        <li className="text-gray-400">Loading investment strengths...</li>
+                      )}
+                    </ul>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-red-400 text-xl">⚠</span>
+                      <h3 className="text-lg font-semibold text-red-400">Investment Risks</h3>
+                    </div>
+                    <ul className="space-y-3">
+                      {stockData?.risks?.map((risk, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <span className="text-red-400 mt-2 text-xs">●</span>
+                          <span className="text-gray-300 leading-relaxed">{risk}</span>
+                        </li>
+                      )) || (
+                        <li className="text-gray-400">Loading investment risks...</li>
+                      )}
+                    </ul>
                   </div>
                 </div>
-              </section>
+              </div>
 
               {/* News Section */}
-              <section id="news" className="scroll-mt-20">
-                <div className="card p-6">
-                  <h2 className="text-xl font-bold mb-6 text-white">Latest Company News</h2>
-                  
-                  {stockData.news?.length > 0 ? (
-                    <div className="space-y-4">
-                      {stockData.news.slice(0, 6).map((item, i) => (
-                        <div key={i} className="border-b border-white/10 pb-4 last:border-b-0">
-                          <a 
-                            href={item.url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="block hover:bg-white/5 -mx-4 px-4 py-3 rounded-lg transition-all group"
-                          >
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs text-blue-400 font-medium">{item.source}</span>
-                              <span className="text-xs text-gray-400">{item.datetime}</span>
-                            </div>
-                            <h3 className="font-medium text-white group-hover:text-cyan-400 transition-colors mb-2">
-                              {item.headline}
-                            </h3>
-                            {item.summary && item.summary !== item.headline && (
-                              <p className="text-sm text-gray-400 leading-relaxed">{item.summary}</p>
-                            )}
-                          </a>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-12">
-                      <div className="text-4xl mb-4">📰</div>
-                      <div className="text-lg font-medium text-gray-300 mb-2">No Recent News Available</div>
-                      <div className="text-sm text-gray-400">News feed will be available soon</div>
-                    </div>
-                  )}
-                </div>
-              </section>
+              <div id="news" className="card p-6">
+                <h2 className="text-2xl font-bold text-white mb-6">Latest Company News</h2>
+                
+                {stockData?.news?.length > 0 ? (
+                  <div className="space-y-4">
+                    {stockData.news.slice(0, 6).map((item, i) => (
+                      <article key={i} className="border-b border-gray-700 pb-4 last:border-b-0">
+                        <a 
+                          href={item.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="block hover:bg-gray-700/30 -mx-4 px-4 py-3 rounded-lg transition-all duration-200 group"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-cyan-400 text-sm font-medium">{item.source}</span>
+                            <span className="text-gray-400 text-sm">{item.datetime}</span>
+                          </div>
+                          <h3 className="text-white group-hover:text-cyan-400 font-semibold mb-2 transition-colors">
+                            {item.headline}
+                          </h3>
+                          {item.summary && item.summary !== item.headline && (
+                            <p className="text-gray-400 text-sm leading-relaxed">{item.summary}</p>
+                          )}
+                        </a>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="text-yellow-400 text-3xl mb-3">📰</div>
+                    <div className="text-xl font-medium text-white mb-2">No Recent News</div>
+                    <div className="text-gray-400">No news articles available for {ticker}</div>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         </div>
-      </ErrorBoundary>
+      </div>
     </>
   )
 }
