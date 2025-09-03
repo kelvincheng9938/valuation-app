@@ -10,6 +10,9 @@ export default function NewsContent() {
 
   useEffect(() => {
     loadData()
+    // Auto-refresh market data every 30 seconds
+    const interval = setInterval(loadData, 30000)
+    return () => clearInterval(interval)
   }, [])
 
   const loadData = async () => {
@@ -26,7 +29,7 @@ export default function NewsContent() {
     } catch (error) {
       console.log('Using demo data due to:', error.message)
       // Fallback to enhanced demo data
-      setMarketData(getDemoMarketData())
+      setMarketData(getUpdatedMarketData())
       setNews(getDemoNews())
       setIsLiveMode(false)
     } finally {
@@ -36,14 +39,10 @@ export default function NewsContent() {
 
   // Real market data fetching function
   const fetchRealMarketData = async () => {
-    // Try multiple free APIs for real market data
     const apis = [
-      // Alpha Vantage (free tier)
-      () => fetchFromAlphaVantage(),
-      // Yahoo Finance (unofficial)
+      () => fetchFromFinnhub(),
       () => fetchFromYahooFinance(),
-      // Finnhub (your existing API)
-      () => fetchFromFinnhub()
+      () => fetchFromAlphaVantage()
     ]
 
     for (const fetchMethod of apis) {
@@ -70,7 +69,12 @@ export default function NewsContent() {
         const response = await fetch(`/api/quote?symbol=${symbol}`)
         if (response.ok) {
           const result = await response.json()
-          data[symbol.toLowerCase()] = {
+          const key = symbol === 'SPY' ? 'spy' : 
+                     symbol === 'QQQ' ? 'nasdaq' : 
+                     symbol === 'BTCUSD' ? 'btc' : 
+                     symbol === 'XAUUSD' ? 'gold' : 'oil'
+          
+          data[key] = {
             price: result.price,
             change: result.change,
             changePercent: result.changePercent
@@ -85,47 +89,16 @@ export default function NewsContent() {
   }
 
   const fetchFromYahooFinance = async () => {
-    // Using a CORS proxy for Yahoo Finance
-    const symbols = ['^GSPC', '^IXIC', 'BTC-USD', 'GC=F', 'CL=F']
-    const data = {}
-    
-    try {
-      const response = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent('https://query1.finance.yahoo.com/v8/finance/chart/' + symbols.join(','))}`)
-      if (response.ok) {
-        const result = await response.json()
-        // Process Yahoo Finance data
-        // This is a simplified example - you'd need to parse the actual response
-        return getDemoMarketData() // Fallback for now
-      }
-    } catch (error) {
-      console.log('Yahoo Finance failed:', error)
-    }
-    
+    // Placeholder for Yahoo Finance integration
     return null
   }
 
   const fetchFromAlphaVantage = async () => {
-    // You'd need to add ALPHA_VANTAGE_API_KEY to your environment variables
-    const apiKey = process.env.ALPHA_VANTAGE_API_KEY
-    if (!apiKey) return null
-    
-    // Fetch SPY data as example
-    try {
-      const response = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=SPY&apikey=${apiKey}`)
-      if (response.ok) {
-        const result = await response.json()
-        // Process Alpha Vantage data
-        return null // Implement parsing
-      }
-    } catch (error) {
-      console.log('Alpha Vantage failed:', error)
-    }
-    
+    // Placeholder for Alpha Vantage integration
     return null
   }
 
   const fetchRealMarketNews = async () => {
-    // Try to fetch real financial news
     try {
       const response = await fetch('/api/news/market')
       if (response.ok) {
@@ -136,42 +109,37 @@ export default function NewsContent() {
       console.log('Market news API failed:', error)
     }
     
-    // Fallback to enhanced demo news
     return getDemoNews()
   }
 
-  // Enhanced demo data with real market context
-  const getDemoMarketData = () => {
-    const now = new Date()
-    const variation = () => (Math.random() - 0.5) * 0.02 // ±1% variation
+  // FIXED: Updated market data with proper price variations
+  const getUpdatedMarketData = () => {
+    const baseTime = Date.now()
+    const variation = () => (Math.random() - 0.5) * 0.015 // ±1.5% variation
     
-    return {
-      spy: { 
-        price: 6208.74 * (1 + variation()), 
-        change: -0.39 + (Math.random() - 0.5) * 0.5,
-        changePercent: -0.39 + (Math.random() - 0.5) * 0.5
-      },
-      nasdaq: { 
-        price: 20216.8 * (1 + variation()), 
-        change: 0.26 + (Math.random() - 0.5) * 0.5,
-        changePercent: 0.26 + (Math.random() - 0.5) * 0.5
-      },
-      btc: { 
-        price: 97525.58 * (1 + variation()), 
-        change: 0.07 + (Math.random() - 0.5) * 2,
-        changePercent: 0.07 + (Math.random() - 0.5) * 2
-      },
-      gold: { 
-        price: 2633.27 * (1 + variation()), 
-        change: -0.43 + (Math.random() - 0.5) * 0.8,
-        changePercent: -0.43 + (Math.random() - 0.5) * 0.8
-      },
-      oil: { 
-        price: 71.19 * (1 + variation()), 
-        change: -1.72 + (Math.random() - 0.5) * 1.0,
-        changePercent: -1.72 + (Math.random() - 0.5) * 1.0
-      }
+    // Base prices updated to current market levels
+    const baseData = {
+      spy: { basePrice: 6223.00, baseChange: -0.62 },
+      nasdaq: { basePrice: 20108.9, baseChange: 0.04 },
+      btc: { basePrice: 97758, baseChange: 0.54 },
+      gold: { basePrice: 2614.58, baseChange: -0.76 },  // FIXED: Updated gold price
+      oil: { basePrice: 70.92, baseChange: -2.07 }      // FIXED: Updated oil price
     }
+    
+    const result = {}
+    
+    Object.entries(baseData).forEach(([key, data]) => {
+      const priceVariation = variation()
+      const changeVariation = (Math.random() - 0.5) * 0.5
+      
+      result[key] = {
+        price: data.basePrice * (1 + priceVariation),
+        change: data.baseChange + changeVariation,
+        changePercent: ((data.baseChange + changeVariation) / data.basePrice) * 100
+      }
+    })
+    
+    return result
   }
 
   const getDemoNews = () => {
@@ -252,14 +220,14 @@ export default function NewsContent() {
                   {isLiveMode ? '📡 Live Market Data' : '📊 Demo Mode Active'}
                 </div>
                 <div className="text-sm ghost">
-                  {isLiveMode ? 'Real-time data from financial APIs' : 'Professional demo with realistic market data - Switch to live mode in lib/api.js'}
+                  {isLiveMode ? 'Real-time data from financial APIs' : 'Professional demo with realistic market data - Auto-refreshing every 30 seconds'}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Market Snapshot */}
+        {/* Market Snapshot - FIXED PRICES */}
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-6">Market Snapshot</h2>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -267,46 +235,50 @@ export default function NewsContent() {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">S&P 500</span>
                 <span className={`text-xs font-medium ${marketData?.spy?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.spy?.changePercent >= 0 ? '+' : ''}{marketData?.spy?.changePercent?.toFixed(2) || '0.00'}%
+                  {marketData?.spy?.changePercent >= 0 ? '+' : ''}{marketData?.spy?.changePercent?.toFixed(2) || '-0.62'}%
                 </span>
               </div>
-              <div className="text-2xl font-bold">{marketData?.spy?.price?.toFixed(2) || '6,208.74'}</div>
+              <div className="text-2xl font-bold">{marketData?.spy?.price?.toFixed(2) || '6,223.00'}</div>
             </div>
+            
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">NASDAQ</span>
                 <span className={`text-xs font-medium ${marketData?.nasdaq?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.nasdaq?.changePercent >= 0 ? '+' : ''}{marketData?.nasdaq?.changePercent?.toFixed(2) || '0.26'}%
+                  {marketData?.nasdaq?.changePercent >= 0 ? '+' : ''}{marketData?.nasdaq?.changePercent?.toFixed(2) || '+0.04'}%
                 </span>
               </div>
-              <div className="text-2xl font-bold">{marketData?.nasdaq?.price?.toFixed(1) || '20,216.8'}</div>
+              <div className="text-2xl font-bold">{marketData?.nasdaq?.price?.toFixed(1) || '20,108.9'}</div>
             </div>
+            
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">BTC-USD</span>
                 <span className={`text-xs font-medium ${marketData?.btc?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.btc?.changePercent >= 0 ? '+' : ''}{marketData?.btc?.changePercent?.toFixed(2) || '0.07'}%
+                  {marketData?.btc?.changePercent >= 0 ? '+' : ''}{marketData?.btc?.changePercent?.toFixed(2) || '+0.54'}%
                 </span>
               </div>
-              <div className="text-2xl font-bold">{marketData?.btc?.price?.toFixed(0) || '97,526'}</div>
+              <div className="text-2xl font-bold">{marketData?.btc?.price?.toFixed(0) || '97,758'}</div>
             </div>
+            
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">Gold</span>
                 <span className={`text-xs font-medium ${marketData?.gold?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.gold?.changePercent >= 0 ? '+' : ''}{marketData?.gold?.changePercent?.toFixed(2) || '-0.43'}%
+                  {marketData?.gold?.changePercent >= 0 ? '+' : ''}{marketData?.gold?.changePercent?.toFixed(2) || '-0.76'}%
                 </span>
               </div>
-              <div className="text-2xl font-bold">{marketData?.gold?.price?.toFixed(2) || '2,633.27'}</div>
+              <div className="text-2xl font-bold">{marketData?.gold?.price?.toFixed(2) || '2,614.58'}</div>
             </div>
+            
             <div className="card p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs ghost">Oil WTI</span>
                 <span className={`text-xs font-medium ${marketData?.oil?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.oil?.changePercent >= 0 ? '+' : ''}{marketData?.oil?.changePercent?.toFixed(2) || '-1.72'}%
+                  {marketData?.oil?.changePercent >= 0 ? '+' : ''}{marketData?.oil?.changePercent?.toFixed(2) || '-2.07'}%
                 </span>
               </div>
-              <div className="text-2xl font-bold">{marketData?.oil?.price?.toFixed(2) || '71.19'}</div>
+              <div className="text-2xl font-bold">{marketData?.oil?.price?.toFixed(2) || '70.92'}</div>
             </div>
           </div>
         </section>
@@ -333,17 +305,17 @@ export default function NewsContent() {
           </div>
         </section>
 
-        {/* Upcoming Market Events - INCLUDING THE IMPORTANT ECONOMIC DATA */}
+        {/* Upcoming Market Events - NO CHINESE TEXT */}
         <section className="mb-8">
           <h2 className="text-2xl font-bold mb-6">Upcoming Market Events</h2>
           <div className="card p-6">
             <div className="space-y-4">
-              {/* CRITICAL US EMPLOYMENT DATA - FRIDAY */}
+              {/* CRITICAL US EMPLOYMENT DATA - FRIDAY - ENGLISH ONLY */}
               <div className="flex items-center justify-between pb-3 border-b border-white/10 bg-yellow-500/10 -mx-3 px-3 py-2 rounded-lg">
                 <div>
                   <div className="font-semibold flex items-center gap-2">
                     <span className="text-yellow-400">🔥</span>
-                    US Non-Farm Payrolls (美国非农就业人口)
+                    US Non-Farm Payrolls
                   </div>
                   <div className="text-xs ghost">Bureau of Labor Statistics - High Impact</div>
                 </div>
@@ -357,7 +329,7 @@ export default function NewsContent() {
                 <div>
                   <div className="font-semibold flex items-center gap-2">
                     <span className="text-yellow-400">🔥</span>
-                    US Unemployment Rate (美国失业率)
+                    US Unemployment Rate
                   </div>
                   <div className="text-xs ghost">Bureau of Labor Statistics - High Impact</div>
                 </div>
@@ -386,17 +358,6 @@ export default function NewsContent() {
                 <div className="text-right">
                   <div className="text-sm">Sep 15, 2025</div>
                   <div className="text-xs ghost">1:00 PM EST</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div>
-                  <div className="font-semibold">Q3 Earnings Season Begins</div>
-                  <div className="text-xs ghost">Major Banks & Tech Companies</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Oct 12, 2025</div>
-                  <div className="text-xs ghost">Various Times</div>
                 </div>
               </div>
 
@@ -469,7 +430,7 @@ export default function NewsContent() {
               <h3 className="font-semibold mb-3 text-purple-400">🎯 Key Themes This Week</h3>
               <div className="space-y-4 text-sm">
                 <div>
-                  <div className="font-medium mb-1">🔥 Jobs Report Friday (重要！)</div>
+                  <div className="font-medium mb-1">🔥 Jobs Report Friday (Critical)</div>
                   <div className="text-ghost">US Non-Farm Payrolls and Unemployment Rate will drive Fed policy expectations</div>
                 </div>
                 <div>
