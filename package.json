@@ -16,9 +16,11 @@
   "dayjs": "^1.11.10",
   "next-auth": "^4.24.7"
 },
-  "devDependencies": {
-    "tailwindcss": "^3.3.6",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32"
-  }
+"devDependencies": {
+  "tailwindcss": "^3.3.6",
+  "autoprefixer": "^10.4.16",
+  "postcss": "^8.4.32",
+  "typescript": "^5.4.5",
+  "@types/react": "^18.2.66",
+  "@types/node": "^20.11.30"
 }
