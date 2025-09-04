@@ -30,19 +30,13 @@ export default function Navigation() {
                 href="/report" 
                 className={pathname === '/report' ? 'text-cyan-400' : 'text-gray-300 hover:text-white transition-colors'}
               >
-                Report
+                Analysis
               </Link>
               <Link 
                 href="/news" 
                 className={pathname === '/news' ? 'text-cyan-400' : 'text-gray-300 hover:text-white transition-colors'}
               >
                 News
-              </Link>
-              <Link 
-                href="/admin" 
-                className={`${pathname === '/admin' ? 'text-cyan-400' : 'text-gray-300 hover:text-white'} transition-colors text-sm`}
-              >
-                ⚙️ Admin
               </Link>
             </div>
           </div>
@@ -53,7 +47,7 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Menu - Clean & Professional */}
         <div className="md:hidden mt-4 pt-4 border-t border-white/10">
           <div className="flex flex-col space-y-2">
             <Link 
@@ -73,12 +67,6 @@ export default function Navigation() {
               className={`block px-3 py-2 rounded-lg ${pathname === '/news' ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-300 hover:text-white hover:bg-white/5'} transition-colors`}
             >
               📰 News
-            </Link>
-            <Link 
-              href="/admin" 
-              className={`block px-3 py-2 rounded-lg ${pathname === '/admin' ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-300 hover:text-white hover:bg-white/5'} transition-colors`}
-            >
-              ⚙️ Admin
             </Link>
           </div>
         </div>
