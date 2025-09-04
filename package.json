@@ -2,7 +2,7 @@
   "name": "valuation-app",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
+  "scr,ipts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
@@ -15,7 +15,7 @@
   "axios": "^1.6.2",
   "dayjs": "^1.11.10",
   "next-auth": "^4.24.7"
-}
+},
   "devDependencies": {
     "tailwindcss": "^3.3.6",
     "autoprefixer": "^10.4.16",
