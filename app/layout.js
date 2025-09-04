@@ -1,5 +1,6 @@
 import './globals.css'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import SessionProviderWrapper from '@/components/SessionProviderWrapper'
 
 export const metadata = {
   title: 'ValuationPro - Institutional Stock Analysis',
@@ -10,9 +11,11 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className="gradient-bg">
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
+        <SessionProviderWrapper>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </SessionProviderWrapper>
       </body>
     </html>
   )
