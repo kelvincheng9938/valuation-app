@@ -1,6 +1,7 @@
+// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { auth } from 'next-auth';
+import { auth } from '@/auth'; // ← 由 'next-auth' 改成 '@/auth'
 
 export async function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith('/report')) {
@@ -14,6 +15,4 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {
-  matcher: ['/report/:path*']
-};
+export const config = { matcher: ['/report/:path*'] };
