@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import ThemeToggle from './ThemeToggle'
 
-export default function Navigation() {
+export default function Navigation({ isHomePage = false }) {
   const [pathname, setPathname] = useState('')
   const actualPathname = usePathname()
 
@@ -14,60 +14,53 @@ export default function Navigation() {
   }, [actualPathname])
   
   return (
-    <nav className="sticky top-0 z-50 backdrop-blur-md bg-black/20 border-b border-white/10">
+    <nav className="sticky top-0 z-50 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="text-xl font-bold text-white">ValuationPro</Link>
+            <Link href="/" className="text-xl font-bold">
+              <span className="hero-title">ValuationPro</span>
+            </Link>
             <div className="hidden md:flex space-x-6">
               <Link 
                 href="/" 
-                className={pathname === '/' ? 'text-cyan-400' : 'text-gray-300 hover:text-white transition-colors'}
+                className={`transition-colors ${
+                  pathname === '/' 
+                    ? 'text-cyan-400' 
+                    : 'hover:text-white transition-colors'
+                }`}
               >
                 Home
               </Link>
               <Link 
                 href="/report" 
-                className={pathname === '/report' ? 'text-cyan-400' : 'text-gray-300 hover:text-white transition-colors'}
+                className={`transition-colors ${
+                  pathname === '/report' 
+                    ? 'text-cyan-400' 
+                    : 'hover:text-white transition-colors'
+                }`}
               >
-                Analysis
+                Report
               </Link>
               <Link 
                 href="/news" 
-                className={pathname === '/news' ? 'text-cyan-400' : 'text-gray-300 hover:text-white transition-colors'}
+                className={`transition-colors ${
+                  pathname === '/news' 
+                    ? 'text-cyan-400' 
+                    : 'hover:text-white transition-colors'
+                }`}
               >
                 News
               </Link>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          
+          <div className="flex items-center space-x-6">
             <ThemeToggle />
-            <span className="text-xs ghost hidden md:inline">API: Connected</span>
-            <div className="w-2 h-2 bg-green-500 rounded-full market-badge"></div>
-          </div>
-        </div>
-
-        {/* Mobile Menu - Clean & Professional */}
-        <div className="md:hidden mt-4 pt-4 border-t border-white/10">
-          <div className="flex flex-col space-y-2">
-            <Link 
-              href="/" 
-              className={`block px-3 py-2 rounded-lg ${pathname === '/' ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-300 hover:text-white hover:bg-white/5'} transition-colors`}
-            >
-              🏠 Home
-            </Link>
-            <Link 
-              href="/report" 
-              className={`block px-3 py-2 rounded-lg ${pathname === '/report' ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-300 hover:text-white hover:bg-white/5'} transition-colors`}
-            >
-              📊 Analysis
-            </Link>
-            <Link 
-              href="/news" 
-              className={`block px-3 py-2 rounded-lg ${pathname === '/news' ? 'text-cyan-400 bg-cyan-400/10' : 'text-gray-300 hover:text-white hover:bg-white/5'} transition-colors`}
-            >
-              📰 News
-            </Link>
+            <div className="hidden md:flex items-center space-x-4">
+              <span className="text-xs ghost">API: Connected</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full market-badge"></div>
+            </div>
           </div>
         </div>
       </div>
