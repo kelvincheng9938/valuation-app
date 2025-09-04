@@ -10,12 +10,11 @@ function LimitBanner({ isFirstTime }) {
       <div className="mb-4 p-4 rounded-lg border border-blue-400/30 bg-blue-500/10">
         <div className="text-blue-400 font-semibold mb-2">🎯 Welcome to ValuationPro!</div>
         <div className="text-sm text-blue-300">
-          You're viewing your <strong>free preview report</strong>. Sign in with Google to get 5 more stock analyses per month.
+          You're viewing your <strong>free demo report</strong>. Want to analyze more stocks? Sign in with Google to get 5 analyses per month.
         </div>
       </div>
     );
   }
-
   return null;
 }
 
@@ -38,12 +37,12 @@ function LoginPrompt({ onLogin, onSkip }) {
           <div className="bg-white/5 rounded-lg p-4">
             <div className="text-2xl mb-2">🏢</div>
             <div className="font-semibold text-green-400">43 Stocks</div>
-            <div className="text-sm text-gray-400">Including HK listings</div>
+            <div className="text-xs text-gray-400">Including HK listings</div>
           </div>
           <div className="bg-white/5 rounded-lg p-4">
             <div className="text-2xl mb-2">⚡</div>
             <div className="font-semibold text-purple-400">Bloomberg Data</div>
-            <div className="text-sm text-gray-400">Professional grade</div>
+            <div className="text-xs text-gray-400">Professional grade</div>
           </div>
         </div>
 
@@ -125,166 +124,101 @@ export default function ReportPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const [blocked, setBlocked] = useState(false);
-  const [left, setLeft] = useState(5);
-  const [loading, setLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isFirstView, setIsFirstView] = useState(true);
-  const [allowFirstView, setAllowFirstView] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   // Check if there's a ticker in URL
   const urlTicker = searchParams.get('ticker');
 
   useEffect(() => {
+    console.log('[Report] useEffect - status:', status, 'urlTicker:', urlTicker);
+    
     if (status === 'loading') return;
 
     if (status === 'authenticated') {
-      // Authenticated user - check API usage
-      checkAndConsumeUsage();
-    } else {
-      // Unauthenticated user logic
-      const freeUsage = checkFreeUsage();
-      
-      // If no ticker in URL, always allow (first landing on /report)
-      if (!urlTicker) {
-        setIsFirstView(true);
-        setShowLoginPrompt(false);
-        setAllowFirstView(true);
-        return;
-      }
-      
-      // If ticker in URL and they've used their free view, show login
-      if (urlTicker && freeUsage.hasUsed) {
-        setShowLoginPrompt(true);
-        setIsFirstView(false);
-        setAllowFirstView(false);
-        return;
-      }
-      
-      // If ticker in URL and they haven't used free view, allow it
-      if (urlTicker && !freeUsage.hasUsed) {
-        setIsFirstView(true);
-        setShowLoginPrompt(false);
-        setAllowFirstView(true);
-        return;
-      }
+      console.log('[Report] User authenticated - showing normal report');
+      setShowLoginPrompt(false);
+      setIsFirstView(false);
+      setLoading(false);
+      return;
+    }
+
+    // User is NOT authenticated
+    const freeUsage = checkFreeUsage();
+    console.log('[Report] Free usage check:', freeUsage);
+
+    // SIMPLE LOGIC:
+    // 1. If no ticker in URL (/report) -> show free demo with banner
+    // 2. If ticker in URL AND not used free view -> show free demo  
+    // 3. If ticker in URL AND already used free view -> show login prompt
+
+    if (!urlTicker) {
+      console.log('[Report] No ticker - showing first view with banner');
+      setShowLoginPrompt(false);
+      setIsFirstView(true);
+      setLoading(false);
+    } else if (urlTicker && !freeUsage.hasUsed) {
+      console.log('[Report] Has ticker, no free usage - showing first view');
+      setShowLoginPrompt(false);
+      setIsFirstView(true);
+      setLoading(false);
+    } else if (urlTicker && freeUsage.hasUsed) {
+      console.log('[Report] Has ticker, already used free view - showing login prompt');
+      setShowLoginPrompt(true);
+      setIsFirstView(false);
+      setLoading(false);
     }
   }, [status, urlTicker]);
 
-  const checkAndConsumeUsage = async () => {
-    setLoading(true);
-    try {
-      // Check current usage
-      const checkResponse = await fetch('/api/usage?op=peek', { 
-        cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
-      });
-      
-      if (checkResponse.ok) {
-        const checkData = await checkResponse.json();
-        
-        if (checkData.remaining <= 0) {
-          setBlocked(true);
-          setLeft(0);
-          setLoading(false);
-          return;
-        }
-        
-        // If we have remaining usage, consume one
-        const consumeResponse = await fetch('/api/usage?op=consume', { 
-          cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' }
-        });
-        
-        if (consumeResponse.status === 429) {
-          const consumeData = await consumeResponse.json();
-          setBlocked(true);
-          setLeft(consumeData?.remaining ?? 0);
-        } else if (consumeResponse.ok) {
-          const consumeData = await consumeResponse.json();
-          setLeft(consumeData?.remaining ?? 0);
-          setBlocked(false);
-        }
-      }
-    } catch (error) {
-      console.error('Usage check error:', error);
-      // On error, allow access (graceful degradation)
-      setBlocked(false);
-      setLeft(5);
-    }
-    
-    setLoading(false);
-  };
-
   const handleStockChange = (newTicker) => {
-    if (status === 'unauthenticated') {
-      const freeUsage = checkFreeUsage();
-      
-      // If they're trying to change stocks and have already used their free view
-      if (freeUsage.hasUsed) {
-        setShowLoginPrompt(true);
-        return false; // Prevent stock change
-      }
+    console.log('[Report] Stock change requested:', newTicker);
+    
+    if (status === 'authenticated') {
+      console.log('[Report] User authenticated - allowing stock change');
+      return true;
+    }
+
+    const freeUsage = checkFreeUsage();
+    console.log('[Report] handleStockChange - Free usage:', freeUsage);
+    
+    if (freeUsage.hasUsed) {
+      console.log('[Report] Already used free view - showing login prompt');
+      setShowLoginPrompt(true);
+      return false; // Prevent stock change
     }
     
+    console.log('[Report] Haven\'t used free view - allowing change');
     return true; // Allow stock change
   };
 
   const handleLoginClick = () => {
+    console.log('[Report] Login clicked');
     const currentUrl = `/report${urlTicker ? `?ticker=${urlTicker}` : ''}`;
     router.push(`/login?from=${encodeURIComponent(currentUrl)}&reason=free_limit`);
   };
 
   const handleSkipLogin = () => {
+    console.log('[Report] Skip login clicked');
     router.push('/'); // Go back to homepage
   };
 
-  if (status === 'loading' || loading) {
+  if (loading) {
     return <LoadingState />;
   }
 
   // Show login prompt for unauthenticated users who have used their free view
-  if (showLoginPrompt && status === 'unauthenticated' && !allowFirstView) {
+  if (showLoginPrompt && status === 'unauthenticated') {
+    console.log('[Report] Rendering login prompt');
     return <LoginPrompt onLogin={handleLoginClick} onSkip={handleSkipLogin} />;
   }
 
-  // If authenticated but blocked by usage limit
-  if (status === 'authenticated' && blocked) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="card p-8 text-center">
-          <div className="text-yellow-400 text-4xl mb-4">📊</div>
-          <div className="text-xl font-bold mb-4">Monthly Limit Reached</div>
-          <div className="text-sm ghost mb-6">
-            You've analyzed 5 stocks this month. Your free access will reset on the 1st of next month.
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Authenticated user with remaining usage
-  if (status === 'authenticated') {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="text-xs ghost">
-            Remaining analyses this month: <span className="text-cyan-400 font-medium">{left}</span>
-          </div>
-          <div className="text-xs ghost">
-            Signed in as: <span className="text-cyan-400">{session?.user?.email}</span>
-          </div>
-        </div>
-        
-        <ReportContent onStockChange={handleStockChange} />
-      </div>
-    );
-  }
-
-  // Unauthenticated user - first view or allowed view
+  // Show the actual report
+  console.log('[Report] Rendering report - authenticated:', status === 'authenticated', 'isFirstView:', isFirstView);
+  
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      {isFirstView && allowFirstView && <LimitBanner isFirstTime={true} />}
+      {isFirstView && status === 'unauthenticated' && <LimitBanner isFirstTime={true} />}
       <ReportContent onStockChange={handleStockChange} />
     </div>
   );
