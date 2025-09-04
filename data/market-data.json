@@ -1,0 +1,40 @@
+{
+  "sp500": {
+    "price": 6045.23,
+    "change": 0.85
+  },
+  "nasdaq": {
+    "price": 19892.15,
+    "change": 1.12
+  },
+  "dow": {
+    "price": 44234.56,
+    "change": 0.45
+  },
+  "bitcoin": {
+    "price": 94650,
+    "change": -1.85
+  },
+  "gold": {
+    "price": 2647.30,
+    "change": 0.32
+  },
+  "oil": {
+    "price": 69.85,
+    "change": -0.98
+  },
+  "vix": {
+    "price": 16.45,
+    "change": -2.15
+  },
+  "euro": {
+    "price": 1.0435,
+    "change": 0.15
+  },
+  "yen": {
+    "price": 156.78,
+    "change": -0.25
+  },
+  "dataSource": "manual",
+  "lastUpdated": "2025-01-03T10:30:00.000Z"
+}
