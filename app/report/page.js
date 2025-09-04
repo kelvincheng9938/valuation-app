@@ -1,27 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ReportContent from '@/components/ReportContent';
 
-function LimitBanner({ over, left, isFirstTime }) {
+function LimitBanner({ isFirstTime }) {
   if (isFirstTime) {
     return (
       <div className="mb-4 p-4 rounded-lg border border-blue-400/30 bg-blue-500/10">
         <div className="text-blue-400 font-semibold mb-2">🎯 Welcome to ValuationPro!</div>
         <div className="text-sm text-blue-300">
           You're viewing your <strong>free preview report</strong>. Sign in with Google to get 5 more stock analyses per month.
-        </div>
-      </div>
-    );
-  }
-
-  if (over) {
-    return (
-      <div className="mb-4 p-4 rounded-lg border border-red-400/30 bg-red-400/10">
-        <div className="text-red-400 font-semibold mb-2">Free Limit Reached</div>
-        <div className="text-sm text-red-300">
-          You've used your free stock analysis. Sign in with Google to get 5 more analyses this month.
         </div>
       </div>
     );
@@ -103,7 +92,7 @@ function LoadingState() {
 function checkFreeUsage() {
   if (typeof window === 'undefined') return { hasUsed: false, count: 0 };
   
-  // Get usage from cookie (this matches what middleware sets)
+  // Get usage from cookie
   const cookies = document.cookie.split(';');
   const freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
   
@@ -134,11 +123,17 @@ function checkFreeUsage() {
 export default function ReportPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [blocked, setBlocked] = useState(false);
   const [left, setLeft] = useState(5);
   const [loading, setLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [isFirstView, setIsFirstView] = useState(true);
+  const [allowFirstView, setAllowFirstView] = useState(true);
+
+  // Check if there's a ticker in URL
+  const urlTicker = searchParams.get('ticker');
 
   useEffect(() => {
     if (status === 'loading') return;
@@ -147,25 +142,39 @@ export default function ReportPage() {
       // Authenticated user - check API usage
       checkAndConsumeUsage();
     } else {
-      // Unauthenticated user - check free usage
+      // Unauthenticated user logic
       const freeUsage = checkFreeUsage();
       
-      if (freeUsage.hasUsed) {
-        // They've already used their free view
-        setShowLoginPrompt(true);
-        setIsFirstView(false);
-      } else {
-        // This is their first free view
+      // If no ticker in URL, always allow (first landing on /report)
+      if (!urlTicker) {
         setIsFirstView(true);
         setShowLoginPrompt(false);
+        setAllowFirstView(true);
+        return;
+      }
+      
+      // If ticker in URL and they've used their free view, show login
+      if (urlTicker && freeUsage.hasUsed) {
+        setShowLoginPrompt(true);
+        setIsFirstView(false);
+        setAllowFirstView(false);
+        return;
+      }
+      
+      // If ticker in URL and they haven't used free view, allow it
+      if (urlTicker && !freeUsage.hasUsed) {
+        setIsFirstView(true);
+        setShowLoginPrompt(false);
+        setAllowFirstView(true);
+        return;
       }
     }
-  }, [status]);
+  }, [status, urlTicker]);
 
   const checkAndConsumeUsage = async () => {
     setLoading(true);
     try {
-      // First check current usage
+      // Check current usage
       const checkResponse = await fetch('/api/usage?op=peek', { 
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
@@ -207,24 +216,23 @@ export default function ReportPage() {
     setLoading(false);
   };
 
-  const handleStockChange = () => {
-    // Called when user tries to switch stocks
-    if (status === 'unauthenticated' && !isFirstView) {
-      // They've already seen their free report, show login
-      setShowLoginPrompt(true);
-      return false; // Prevent stock change
-    }
-    
-    if (isFirstView && status === 'unauthenticated') {
-      // Mark that they've now used their free view
-      setIsFirstView(false);
+  const handleStockChange = (newTicker) => {
+    if (status === 'unauthenticated') {
+      const freeUsage = checkFreeUsage();
+      
+      // If they're trying to change stocks and have already used their free view
+      if (freeUsage.hasUsed) {
+        setShowLoginPrompt(true);
+        return false; // Prevent stock change
+      }
     }
     
     return true; // Allow stock change
   };
 
   const handleLoginClick = () => {
-    router.push('/login?from=/report&reason=free_limit');
+    const currentUrl = `/report${urlTicker ? `?ticker=${urlTicker}` : ''}`;
+    router.push(`/login?from=${encodeURIComponent(currentUrl)}&reason=free_limit`);
   };
 
   const handleSkipLogin = () => {
@@ -236,7 +244,7 @@ export default function ReportPage() {
   }
 
   // Show login prompt for unauthenticated users who have used their free view
-  if (showLoginPrompt && status === 'unauthenticated') {
+  if (showLoginPrompt && status === 'unauthenticated' && !allowFirstView) {
     return <LoginPrompt onLogin={handleLoginClick} onSkip={handleSkipLogin} />;
   }
 
@@ -244,7 +252,6 @@ export default function ReportPage() {
   if (status === 'authenticated' && blocked) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <LimitBanner over={true} left={0} />
         <div className="card p-8 text-center">
           <div className="text-yellow-400 text-4xl mb-4">📊</div>
           <div className="text-xl font-bold mb-4">Monthly Limit Reached</div>
@@ -274,10 +281,10 @@ export default function ReportPage() {
     );
   }
 
-  // Unauthenticated user's first view
+  // Unauthenticated user - first view or allowed view
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
-      <LimitBanner isFirstTime={true} />
+      {isFirstView && allowFirstView && <LimitBanner isFirstTime={true} />}
       <ReportContent onStockChange={handleStockChange} />
     </div>
   );
