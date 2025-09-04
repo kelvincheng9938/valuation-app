@@ -12,13 +12,17 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     });
     
-    // If user is authenticated, let them through
+    // If user is authenticated, let them through normally
     if (token) {
       return NextResponse.next();
     }
     
-    // For unauthenticated users, check their free usage
+    // For unauthenticated users, handle free usage
     const response = NextResponse.next();
+    
+    // Check if this is a stock change request (has ticker parameter)
+    const url = new URL(req.url);
+    const hasTickerParam = url.searchParams.has('ticker') || url.pathname !== '/report';
     
     // Get current free usage from cookie
     const freeUsageCookie = req.cookies.get('free_usage');
@@ -41,7 +45,7 @@ export async function middleware(req: NextRequest) {
           currentMonth = thisMonth;
         }
       } catch (e) {
-        // Invalid cookie, reset
+        console.log('[Middleware] Invalid cookie, resetting');
         freeUsage = 0;
         currentMonth = thisMonth;
       }
@@ -49,30 +53,39 @@ export async function middleware(req: NextRequest) {
       currentMonth = thisMonth;
     }
     
-    // If they've already used their 1 free view, redirect to login
-    if (freeUsage >= 1) {
-      const url = new URL('/login', req.url);
-      url.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
-      url.searchParams.set('reason', 'free_limit');
-      return NextResponse.redirect(url);
+    // If this is a stock change and they've already used their free view, redirect to login
+    if (hasTickerParam && freeUsage >= 1) {
+      console.log(`[Middleware] Redirecting to login - usage: ${freeUsage}`);
+      const loginUrl = new URL('/login', req.url);
+      loginUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
+      loginUrl.searchParams.set('reason', 'free_limit');
+      return NextResponse.redirect(loginUrl);
     }
     
-    // Allow the first free view and increment counter
-    const newUsageData = {
-      month: currentMonth,
-      count: freeUsage + 1,
-      timestamp: now.toISOString()
-    };
+    // If this is their first visit to /report (no ticker), allow it
+    if (!hasTickerParam) {
+      console.log(`[Middleware] First visit to /report - allowing access`);
+      return response;
+    }
     
-    response.cookies.set('free_usage', JSON.stringify(newUsageData), {
-      maxAge: 60 * 60 * 24 * 31, // 31 days
-      path: '/',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax'
-    });
-    
-    console.log(`[Middleware] Setting free usage cookie:`, newUsageData);
+    // If they're trying to view a stock and haven't used their free view, increment counter
+    if (hasTickerParam && freeUsage === 0) {
+      const newUsageData = {
+        month: currentMonth,
+        count: 1,
+        timestamp: now.toISOString()
+      };
+      
+      response.cookies.set('free_usage', JSON.stringify(newUsageData), {
+        maxAge: 60 * 60 * 24 * 31, // 31 days
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax'
+      });
+      
+      console.log(`[Middleware] Setting free usage cookie:`, newUsageData);
+    }
     
     return response;
   }
