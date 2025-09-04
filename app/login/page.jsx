@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   
   const callbackUrl = searchParams.get('from') || '/report';
+  const reason = searchParams.get('reason');
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -61,10 +62,23 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-6">
-            <h1 className="text-2xl font-semibold text-white mb-3">Welcome Back</h1>
-            <p className="text-sm text-gray-300 leading-relaxed">
-              Sign in with Google to access professional stock analysis. Free users get 5 analyses per month.
-            </p>
+            {reason === 'free_limit' ? (
+              <>
+                <div className="text-4xl mb-4">🎯</div>
+                <h1 className="text-2xl font-semibold text-white mb-3">Ready for More?</h1>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  You've used your <span className="text-cyan-400 font-medium">1 free stock analysis</span>. 
+                  Sign in with Google to get <span className="text-cyan-400 font-medium">4 more analyses</span> this month!
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-semibold text-white mb-3">Welcome Back</h1>
+                <p className="text-sm text-gray-300 leading-relaxed">
+                  Sign in with Google to access professional stock analysis. Free users get 5 analyses per month.
+                </p>
+              </>
+            )}
           </div>
 
           <button
@@ -89,14 +103,25 @@ export default function LoginPage() {
             By signing in, you agree to our terms of service and privacy policy.
           </div>
 
-          <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-400/20">
-            <div className="text-blue-400 text-sm font-medium mb-1">🎯 Free Access</div>
-            <div className="text-xs text-blue-300/80">
-              • 5 stock analyses per month<br/>
-              • Professional-grade reports<br/>
-              • Real Bloomberg Terminal data
+          {reason === 'free_limit' ? (
+            <div className="mt-4 p-3 bg-cyan-500/10 rounded-lg border border-cyan-400/20">
+              <div className="text-cyan-400 text-sm font-medium mb-1">🚀 After Login</div>
+              <div className="text-xs text-cyan-300/80">
+                • 4 more stock analyses this month<br/>
+                • Monthly limit resets automatically<br/>
+                • Same professional Bloomberg data
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-400/20">
+              <div className="text-blue-400 text-sm font-medium mb-1">🎯 Free Access</div>
+              <div className="text-xs text-blue-300/80">
+                • 5 stock analyses per month<br/>
+                • Professional-grade reports<br/>
+                • Real Bloomberg Terminal data
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
