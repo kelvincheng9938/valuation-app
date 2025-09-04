@@ -23,21 +23,30 @@ export async function middleware(req: NextRequest) {
     // Get current free usage from cookie
     const freeUsageCookie = req.cookies.get('free_usage');
     let freeUsage = 0;
+    let currentMonth = '';
+    
+    const now = new Date();
+    const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     
     if (freeUsageCookie) {
       try {
         const usageData = JSON.parse(freeUsageCookie.value);
-        const now = new Date();
-        const usageMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         
         // Reset if different month
-        if (usageData.month === usageMonth) {
+        if (usageData.month === thisMonth) {
           freeUsage = usageData.count || 0;
+          currentMonth = usageData.month;
+        } else {
+          freeUsage = 0;
+          currentMonth = thisMonth;
         }
       } catch (e) {
         // Invalid cookie, reset
         freeUsage = 0;
+        currentMonth = thisMonth;
       }
+    } else {
+      currentMonth = thisMonth;
     }
     
     // If they've already used their 1 free view, redirect to login
@@ -49,11 +58,10 @@ export async function middleware(req: NextRequest) {
     }
     
     // Allow the first free view and increment counter
-    const now = new Date();
-    const usageMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const newUsageData = {
-      month: usageMonth,
-      count: freeUsage + 1
+      month: currentMonth,
+      count: freeUsage + 1,
+      timestamp: now.toISOString()
     };
     
     response.cookies.set('free_usage', JSON.stringify(newUsageData), {
@@ -63,6 +71,8 @@ export async function middleware(req: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax'
     });
+    
+    console.log(`[Middleware] Setting free usage cookie:`, newUsageData);
     
     return response;
   }
