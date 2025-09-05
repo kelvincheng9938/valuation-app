@@ -9,8 +9,12 @@ const DEMO_PRO_USERS = [
 ];
 
 export async function middleware(req: NextRequest) {
+  // 添加調試日誌
+  console.log(`[Middleware] Request: ${req.nextUrl.pathname}${req.nextUrl.search}`);
+  
   // Only apply middleware to /report routes
   if (req.nextUrl.pathname.startsWith('/report')) {
+    console.log(`[Middleware] Processing /report route`);
     
     // Check if user has a session
     const token = await getToken({ 
@@ -18,12 +22,15 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     });
     
+    console.log(`[Middleware] User token:`, token ? `${token.email}` : 'No token');
+    
     // If user is authenticated, handle authenticated user logic
     if (token?.email) {
       const response = NextResponse.next();
       
       // Check if user has paid subscription
       const isPaidUser = DEMO_PRO_USERS.includes(token.email);
+      console.log(`[Middleware] Is paid user: ${isPaidUser}`);
       
       if (isPaidUser) {
         // Paid users get unlimited access
@@ -52,13 +59,16 @@ export async function middleware(req: NextRequest) {
         }
       }
       
+      console.log(`[Middleware] Auth usage: ${authUsage}/5`);
+      
       // Check if this is a stock change request
       const url = new URL(req.url);
       const hasTickerParam = url.searchParams.has('ticker') || url.pathname !== '/report';
+      console.log(`[Middleware] Has ticker param: ${hasTickerParam}, URL: ${url.pathname}${url.search}`);
       
       // If they've used all 5 views, redirect to upgrade page
       if (hasTickerParam && authUsage >= 5) {
-        console.log(`[Middleware] Auth user exceeded 5 views - usage: ${authUsage}`);
+        console.log(`[Middleware] Auth user exceeded 5 views - redirecting to upgrade`);
         const upgradeUrl = new URL('/upgrade', req.url);
         upgradeUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
         upgradeUrl.searchParams.set('reason', 'monthly_limit');
@@ -82,18 +92,20 @@ export async function middleware(req: NextRequest) {
           sameSite: 'lax'
         });
         
-        console.log(`[Middleware] Incrementing auth usage:`, newUsageData);
+        console.log(`[Middleware] Incrementing auth usage to: ${newUsageData.count}`);
       }
       
       return response;
     }
     
     // For unauthenticated users, handle free usage (2 views before login required)
+    console.log(`[Middleware] Processing unauthenticated user`);
     const response = NextResponse.next();
     
     // Check if this is a stock change request (has ticker parameter)
     const url = new URL(req.url);
     const hasTickerParam = url.searchParams.has('ticker') || url.pathname !== '/report';
+    console.log(`[Middleware] Unauth - Has ticker param: ${hasTickerParam}`);
     
     // Get current free usage from cookie
     const freeUsageCookie = req.cookies.get('free_usage');
@@ -123,6 +135,8 @@ export async function middleware(req: NextRequest) {
     } else {
       currentMonth = thisMonth;
     }
+    
+    console.log(`[Middleware] Free usage: ${freeUsage}/2`);
     
     // If this is a stock change and they've used 2 free views, redirect to login
     if (hasTickerParam && freeUsage >= 2) {
@@ -155,15 +169,16 @@ export async function middleware(req: NextRequest) {
         sameSite: 'lax'
       });
       
-      console.log(`[Middleware] Setting free usage cookie:`, newUsageData);
+      console.log(`[Middleware] Setting free usage to: ${newUsageData.count}`);
     }
     
     return response;
   }
   
+  console.log(`[Middleware] Not a /report route, passing through`);
   return NextResponse.next();
 }
 
 export const config = { 
-  matcher: ['/report/:path*']
+  matcher: ['/report', '/report/:path*']
 };
