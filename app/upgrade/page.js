@@ -16,37 +16,28 @@ export default function UpgradePage() {
   const handleUpgrade = async () => {
     setIsLoading(true);
     
-    // TODO: Integrate with your payment processor (Stripe, PayPal, etc.)
-    // For now, we'll simulate the upgrade process
-    
     try {
-      // Simulate API call to create subscription
       console.log('Starting upgrade process for user:', session?.user?.email);
       
-      // In a real implementation, you would:
-      // 1. Create a Stripe checkout session
-      // 2. Redirect to Stripe payment page
-      // 3. Handle the webhook to upgrade user status
-      // 4. Redirect back with success/failure
+      // Create Stripe checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId: 'price_1ABC123' // Replace with your actual Stripe Price ID
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create checkout session');
+      }
+
+      const { url } = await response.json();
       
-      // For demo purposes, show alert
-      alert('Payment integration not yet implemented. This would redirect to Stripe/PayPal checkout.');
-      
-      // Example Stripe integration:
-      // const response = await fetch('/api/create-checkout-session', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     priceId: 'price_1234567890', // Your Stripe price ID
-      //     successUrl: `${window.location.origin}/upgrade/success`,
-      //     cancelUrl: `${window.location.origin}/upgrade`
-      //   })
-      // });
-      // 
-      // if (response.ok) {
-      //   const { url } = await response.json();
-      //   window.location.href = url;
-      // }
+      // Redirect to Stripe Checkout
+      window.location.href = url;
       
     } catch (error) {
       console.error('Upgrade error:', error);
