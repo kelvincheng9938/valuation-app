@@ -80,21 +80,18 @@ async function handleSubscriptionCreated(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // TODO: Update user status in your database
-    // Example:
-    // await updateUserSubscription(userEmail, {
-    //   stripeCustomerId: customer.id,
-    //   stripeSubscriptionId: subscription.id,
-    //   status: 'active',
-    //   planId: subscription.items.data[0].price.id,
-    //   currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    //   currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    // });
+    // Update user status in database using subscription utilities
+    const { updateUserSubscription } = await import('@/lib/subscription');
+    await updateUserSubscription(userEmail, {
+      stripeCustomerId: customer.id,
+      stripeSubscriptionId: subscription.id,
+      status: 'active',
+      planId: subscription.items.data[0].price.id,
+      currentPeriodStart: new Date(subscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    });
     
     console.log(`✅ Subscription activated for user: ${userEmail}`);
-    
-    // Clear usage cookies for this user (they now have unlimited access)
-    // This would be handled in your database update logic
     
   } catch (error) {
     console.error('Error handling subscription created:', error);
@@ -109,12 +106,13 @@ async function handleSubscriptionUpdated(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // TODO: Update subscription status in database
-    // await updateUserSubscription(userEmail, {
-    //   status: subscription.status,
-    //   currentPeriodStart: new Date(subscription.current_period_start * 1000),
-    //   currentPeriodEnd: new Date(subscription.current_period_end * 1000),
-    // });
+    // Update subscription status in database
+    const { updateUserSubscription } = await import('@/lib/subscription');
+    await updateUserSubscription(userEmail, {
+      status: subscription.status,
+      currentPeriodStart: new Date(subscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    });
     
     console.log(`✅ Subscription updated for user: ${userEmail}`);
     
@@ -131,11 +129,9 @@ async function handleSubscriptionCanceled(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // TODO: Update user status to canceled in database
-    // await updateUserSubscription(userEmail, {
-    //   status: 'canceled',
-    //   canceledAt: new Date(),
-    // });
+    // Update user status to canceled in database
+    const { cancelUserSubscription } = await import('@/lib/subscription');
+    await cancelUserSubscription(userEmail);
     
     console.log(`✅ Subscription canceled for user: ${userEmail}`);
     
