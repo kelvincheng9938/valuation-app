@@ -1,6 +1,7 @@
-// components/ReportContent.js - COMPLETE VERSION with All Sections
+// components/ReportContent.js - SIMPLIFIED VERSION (Remove usage checking - middleware handles it)
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from './Navigation'
 import { initCharts, updateChartsTheme } from './ChartComponents'
 import { fetchStockData, getAvailableTickers } from '@/lib/api'
@@ -18,14 +19,22 @@ export default function ReportContent() {
   const [activeSection, setActiveSection] = useState('overview')
   const [showAllCategories, setShowAllCategories] = useState(false)
   const { theme } = useTheme()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
   // Get available tickers and categories
   const availableTickers = getAvailableTickers()
   const stockCategories = getStockCategories()
 
+  // Load initial stock or from URL parameter
   useEffect(() => {
-    loadStockData('AAPL')
-  }, [])
+    const urlTicker = searchParams.get('ticker')
+    if (urlTicker && urlTicker !== ticker) {
+      loadStockData(urlTicker)
+    } else if (!urlTicker) {
+      loadStockData('AAPL')
+    }
+  }, [searchParams])
 
   // Update charts when theme changes
   useEffect(() => {
@@ -58,139 +67,18 @@ export default function ReportContent() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Usage checking functions
-  const checkFreeUsage = () => {
-    if (typeof window === 'undefined') return { count: 0 };
-    
-    const cookies = document.cookie.split(';');
-    const freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
-    
-    if (!freeUsageCookie) {
-      return { count: 0 };
-    }
-    
-    try {
-      const cookieValue = decodeURIComponent(freeUsageCookie.split('=')[1]);
-      const usageData = JSON.parse(cookieValue);
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (usageData.month !== currentMonth) {
-        return { count: 0 };
-      }
-      
-      return { count: usageData.count || 0 };
-    } catch (e) {
-      return { count: 0 };
-    }
-  };
-
-  const checkAuthUsage = () => {
-    if (typeof window === 'undefined') return { count: 0 };
-    
-    const cookies = document.cookie.split(';');
-    const authUsageCookie = cookies.find(cookie => cookie.trim().startsWith('auth_usage='));
-    
-    if (!authUsageCookie) {
-      return { count: 0 };
-    }
-    
-    try {
-      const cookieValue = decodeURIComponent(authUsageCookie.split('=')[1]);
-      const usageData = JSON.parse(cookieValue);
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (usageData.month !== currentMonth) {
-        return { count: 0 };
-      }
-      
-      return { count: usageData.count || 0 };
-    } catch (e) {
-      return { count: 0 };
-    }
-  };
-
-  const incrementFreeUsage = () => {
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const freeUsage = checkFreeUsage();
-    
-    const newUsageData = {
-      month: currentMonth,
-      count: freeUsage.count + 1,
-      timestamp: now.toISOString()
-    };
-    
-    document.cookie = `free_usage=${encodeURIComponent(JSON.stringify(newUsageData))}; path=/; max-age=${60 * 60 * 24 * 31}`;
-    console.log('[ReportContent] Free usage incremented to:', newUsageData.count);
-  };
-
-  const incrementAuthUsage = () => {
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const authUsage = checkAuthUsage();
-    
-    const newUsageData = {
-      month: currentMonth,
-      count: authUsage.count + 1,
-      timestamp: now.toISOString()
-    };
-    
-    document.cookie = `auth_usage=${encodeURIComponent(JSON.stringify(newUsageData))}; path=/; max-age=${60 * 60 * 24 * 31}`;
-    console.log('[ReportContent] Auth usage incremented to:', newUsageData.count);
-  };
-
-   const checkUsageLimits = (newTicker) => {
-    console.log('[ReportContent] Checking usage limits for:', newTicker);
-    
-    // Check if user is authenticated (simple check)
-    const isAuthenticated = typeof document !== 'undefined' && document.cookie.includes('next-auth');
-    
-    if (isAuthenticated) {
-      // Check auth usage
-      const authUsage = checkAuthUsage();
-      console.log('[ReportContent] Auth usage:', authUsage.count);
-      
-      if (authUsage.count >= 5) {
-        console.log('[ReportContent] Auth limit exceeded, redirecting to upgrade');
-        if (typeof window !== 'undefined') {
-          window.location.href = `/upgrade?from=${encodeURIComponent('/report')}&reason=monthly_limit`;
-        }
-        return false;
-      }
-      
-      incrementAuthUsage();
-      return true;
-    } else {
-      // Check free usage
-      const freeUsage = checkFreeUsage();
-      console.log('[ReportContent] Free usage:', freeUsage.count);
-      
-      if (freeUsage.count >= 2) {
-        console.log('[ReportContent] Free limit exceeded, redirecting to login');
-        if (typeof window !== 'undefined') {
-          window.location.href = `/login?from=${encodeURIComponent(`/report?ticker=${newTicker}`)}&reason=free_limit`;
-        }
-        return false;
-      }
-      
-      incrementFreeUsage();
-      return true;
-    }
-  };
-
   const loadStockData = async (symbol) => {
-    // Check usage limits for stock changes (not initial load)
-    if (!checkUsageLimits(symbol)) {
-      return;
-    }
-    
     setLoading(true)
     setError(null)
     
     try {
       console.log(`Loading data for ${symbol}`)
+      
+      // Update URL without navigation (for sharing/bookmarking)
+      const url = new URL(window.location)
+      url.searchParams.set('ticker', symbol.toUpperCase())
+      window.history.pushState({}, '', url)
+      
       const data = await fetchStockData(symbol.toUpperCase())
       setStockData(data)
       setTicker(symbol.toUpperCase())
@@ -216,9 +104,16 @@ export default function ReportContent() {
   const handleSearch = (e) => {
     e.preventDefault()
     if (inputTicker.trim()) {
-      loadStockData(inputTicker.trim())
+      // Navigate to trigger middleware check
+      router.push(`/report?ticker=${inputTicker.trim().toUpperCase()}`)
       setInputTicker('')
     }
+  }
+
+  const handleStockClick = (tickerSymbol) => {
+    console.log('[ReportContent] Stock clicked:', tickerSymbol)
+    // Navigate to trigger middleware check
+    router.push(`/report?ticker=${tickerSymbol}`)
   }
 
   const scrollToSection = (sectionId) => {
@@ -417,10 +312,7 @@ export default function ReportContent() {
                       {category.tickers.map(tickerSymbol => (
                         <button
                           key={tickerSymbol}
-                          onClick={() => {
-                            console.log('[ReportContent] Button clicked for:', tickerSymbol);
-                            loadStockData(tickerSymbol);
-                          }}
+                          onClick={() => handleStockClick(tickerSymbol)}
                           className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             ticker === tickerSymbol
                               ? 'text-white shadow-lg transform scale-105' 
@@ -452,10 +344,7 @@ export default function ReportContent() {
                     {['AAPL', 'NVDA', 'MSFT', 'GOOGL', 'META', '700', 'TSLA', 'LLY'].map(popularTicker => (
                       <button
                         key={popularTicker}
-                        onClick={() => {
-                          console.log('[ReportContent] Popular button clicked for:', popularTicker);
-                          loadStockData(popularTicker);
-                        }}
+                        onClick={() => handleStockClick(popularTicker)}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                           ticker === popularTicker
                             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
@@ -1009,4 +898,3 @@ export default function ReportContent() {
     </>
   )
 }
-
