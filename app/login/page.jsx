@@ -21,12 +21,19 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setIsLoading(true);
+      
+      // Use absolute URL for production
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://www.valuation-pro.com' 
+        : window.location.origin;
+        
       await signIn('google', { 
-        callbackUrl,
+        callbackUrl: `${baseUrl}${callbackUrl}`,
         redirect: true
       });
     } catch (error) {
       console.error('Login error:', error);
+      alert('Login failed. Please try again or check your internet connection.');
       setIsLoading(false);
     }
   };
@@ -54,6 +61,8 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-blue-900">
       <div className="max-w-md w-full mx-4">
         <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-8 text-center shadow-2xl">
+          
+          {/* Logo */}
           <div className="mb-6">
             <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
               ValuationPro
@@ -61,6 +70,7 @@ export default function LoginPage() {
             <div className="text-gray-300">Professional Stock Analysis</div>
           </div>
 
+          {/* Login Message */}
           <div className="mb-6">
             {reason === 'free_limit' ? (
               <>
@@ -90,6 +100,7 @@ export default function LoginPage() {
             )}
           </div>
 
+          {/* Google Login Button */}
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
@@ -108,10 +119,12 @@ export default function LoginPage() {
             {isLoading ? 'Signing in...' : 'Continue with Google'}
           </button>
 
+          {/* Additional Info */}
           <div className="mt-6 text-xs text-gray-400">
             By signing in, you agree to our terms of service and privacy policy.
           </div>
 
+          {/* Feature Info */}
           {reason === 'free_limit' ? (
             <div className="mt-4 p-3 bg-cyan-500/10 rounded-lg border border-cyan-400/20">
               <div className="text-cyan-400 text-sm font-medium mb-1">🚀 After Login</div>
@@ -143,6 +156,16 @@ export default function LoginPage() {
               </div>
             </div>
           )}
+
+          {/* Back Link */}
+          <div className="mt-6 pt-4 border-t border-white/10">
+            <a 
+              href="/"
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              ← Back to Homepage
+            </a>
+          </div>
         </div>
       </div>
     </div>
