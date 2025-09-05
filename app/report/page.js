@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import ReportContent from '@/components/ReportContent';
@@ -27,7 +27,7 @@ function LoginPrompt({ onLogin, onSkip }) {
         <p className="text-gray-300 mb-6 leading-relaxed">
           You've used your <strong>2 free demo reports</strong>! Sign in with Google to unlock:
         </p>
-        
+
         <div className="grid md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white/5 rounded-lg p-4">
             <div className="text-2xl mb-2">📊</div>
@@ -59,7 +59,7 @@ function LoginPrompt({ onLogin, onSkip }) {
             </svg>
             Continue with Google (Free)
           </button>
-          
+
           <button
             onClick={onSkip}
             className="w-full text-gray-400 hover:text-white py-2 text-sm transition-colors"
@@ -89,27 +89,27 @@ function LoadingState() {
 
 function checkFreeUsage() {
   if (typeof window === 'undefined') return { hasUsed: false, count: 0 };
-  
+
   const cookies = document.cookie.split(';');
-  const freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
-  
+  the freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
+
   if (!freeUsageCookie) {
     return { hasUsed: false, count: 0 };
   }
-  
+
   try {
     const cookieValue = decodeURIComponent(freeUsageCookie.split('=')[1]);
     const usageData = JSON.parse(cookieValue);
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+
     if (usageData.month !== currentMonth) {
       return { hasUsed: false, count: 0 };
     }
-    
-    return { 
-      hasUsed: (usageData.count || 0) >= 2, 
-      count: usageData.count || 0 
+
+    return {
+      hasUsed: (usageData.count || 0) >= 2,
+      count: usageData.count || 0
     };
   } catch (e) {
     return { hasUsed: false, count: 0 };
@@ -118,27 +118,27 @@ function checkFreeUsage() {
 
 function checkAuthUsage() {
   if (typeof window === 'undefined') return { hasUsed: false, count: 0 };
-  
+
   const cookies = document.cookie.split(';');
   const authUsageCookie = cookies.find(cookie => cookie.trim().startsWith('auth_usage='));
-  
+
   if (!authUsageCookie) {
     return { hasUsed: false, count: 0 };
   }
-  
+
   try {
     const cookieValue = decodeURIComponent(authUsageCookie.split('=')[1]);
     const usageData = JSON.parse(cookieValue);
     const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    
+    the currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
     if (usageData.month !== currentMonth) {
       return { hasUsed: false, count: 0 };
     }
-    
-    return { 
-      hasUsed: (usageData.count || 0) >= 5, 
-      count: usageData.count || 0 
+
+    return {
+      hasUsed: (usageData.count || 0) >= 5,
+      count: usageData.count || 0
     };
   } catch (e) {
     return { hasUsed: false, count: 0 };
@@ -149,13 +149,13 @@ function incrementFreeUsage() {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const freeUsage = checkFreeUsage();
-  
+
   const newUsageData = {
     month: currentMonth,
     count: freeUsage.count + 1,
     timestamp: now.toISOString()
   };
-  
+
   document.cookie = `free_usage=${encodeURIComponent(JSON.stringify(newUsageData))}; path=/; max-age=${60 * 60 * 24 * 31}`;
   console.log('[Report] Free usage incremented to:', newUsageData.count);
 }
@@ -164,13 +164,13 @@ function incrementAuthUsage() {
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const authUsage = checkAuthUsage();
-  
+
   const newUsageData = {
     month: currentMonth,
     count: authUsage.count + 1,
     timestamp: now.toISOString()
   };
-  
+
   document.cookie = `auth_usage=${encodeURIComponent(JSON.stringify(newUsageData))}; path=/; max-age=${60 * 60 * 24 * 31}`;
   console.log('[Report] Auth usage incremented to:', newUsageData.count);
 }
@@ -179,37 +179,42 @@ export default function ReportPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
-  
+
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [isFirstView, setIsFirstView] = useState(true);
   const [loading, setLoading] = useState(true);
 
   const urlTicker = searchParams.get('ticker');
+  const lastTickerRef = useRef(null);
 
   useEffect(() => {
     console.log('[Report] useEffect - status:', status, 'urlTicker:', urlTicker);
-    
+
     if (status === 'loading') return;
 
     if (status === 'authenticated') {
       console.log('[Report] User authenticated');
-      
+
       // Check if auth user exceeded limit
       const authUsage = checkAuthUsage();
       console.log('[Report] Auth usage:', authUsage);
-      
+
       if (urlTicker && authUsage.hasUsed) {
         console.log('[Report] Auth user exceeded 5 views - showing upgrade prompt');
         setShowUpgradePrompt(true);
         setShowLoginPrompt(false);
         setIsFirstView(false);
       } else {
+        if (urlTicker && lastTickerRef.current !== urlTicker) {
+          incrementAuthUsage();
+          lastTickerRef.current = urlTicker;
+        }
         setShowLoginPrompt(false);
         setShowUpgradePrompt(false);
         setIsFirstView(false);
       }
-      
+
       setLoading(false);
       return;
     }
@@ -226,6 +231,10 @@ export default function ReportPage() {
       setLoading(false);
     } else if (urlTicker && !freeUsage.hasUsed) {
       console.log('[Report] Has ticker, not exceeded free limit - showing report');
+      if (lastTickerRef.current !== urlTicker) {
+        incrementFreeUsage();
+        lastTickerRef.current = urlTicker;
+      }
       setShowLoginPrompt(false);
       setShowUpgradePrompt(false);
       setIsFirstView(true);
@@ -241,34 +250,30 @@ export default function ReportPage() {
 
   const handleStockChange = (newTicker) => {
     console.log('[Report] Stock change requested:', newTicker);
-    
+
     if (status === 'authenticated') {
       const authUsage = checkAuthUsage();
       console.log('[Report] Auth user - current usage:', authUsage.count);
-      
+
       if (authUsage.count >= 5) {
         console.log('[Report] Auth user exceeded limit - redirecting to upgrade');
         router.push(`/upgrade?from=${encodeURIComponent('/report')}&reason=monthly_limit`);
         return false;
       }
-      
-      // Increment auth usage
-      incrementAuthUsage();
+
       return true;
     }
 
     // Unauthenticated user
     const freeUsage = checkFreeUsage();
     console.log('[Report] Free user - current usage:', freeUsage.count);
-    
+
     if (freeUsage.count >= 2) {
       console.log('[Report] Free user exceeded limit - redirecting to login');
       router.push(`/login?from=${encodeURIComponent(`/report?ticker=${newTicker}`)}&reason=free_limit`);
       return false;
     }
-    
-    // Increment free usage
-    incrementFreeUsage();
+
     return true;
   };
 
@@ -302,7 +307,7 @@ export default function ReportPage() {
           <p className="text-gray-300 mb-6 leading-relaxed">
             You've used all <strong>5 free monthly analyses</strong>! Upgrade to Pro for unlimited access:
           </p>
-          
+
           <div className="grid md:grid-cols-2 gap-4 mb-6">
             <div className="bg-white/5 rounded-lg p-4">
               <div className="text-2xl mb-2">∞</div>
@@ -323,7 +328,7 @@ export default function ReportPage() {
             >
               Upgrade to Pro ($9.99/month)
             </button>
-            
+
             <button
               onClick={handleSkipLogin}
               className="w-full text-gray-400 hover:text-white py-2 text-sm transition-colors"
