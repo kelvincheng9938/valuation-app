@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
+// Demo pro users for testing - 你可以在這裡添加測試用戶
+const DEMO_PRO_USERS = [
+  'demo@valuationpro.com',
+  'pro@example.com'
+];
+
 export async function middleware(req: NextRequest) {
   // Only apply middleware to /report routes
   if (req.nextUrl.pathname.startsWith('/report')) {
@@ -13,19 +19,19 @@ export async function middleware(req: NextRequest) {
     });
     
     // If user is authenticated, handle authenticated user logic
-    if (token) {
+    if (token?.email) {
       const response = NextResponse.next();
       
-      // Check if user has paid subscription
-      const hasPaidSubscription = await checkUserSubscription(token.email);
+      // Check if user has paid subscription (直接檢查，不要動態導入)
+      const isPaidUser = DEMO_PRO_USERS.includes(token.email);
       
-      if (hasPaidSubscription) {
+      if (isPaidUser) {
         // Paid users get unlimited access
         console.log(`[Middleware] Pro user ${token.email} - unlimited access`);
         return response;
       }
       
-      // Free authenticated users get 5 total views
+      // Free authenticated users get 5 total views per month
       const authUsageCookie = req.cookies.get('auth_usage');
       let authUsage = 0;
       const now = new Date();
@@ -156,18 +162,6 @@ export async function middleware(req: NextRequest) {
   }
   
   return NextResponse.next();
-}
-
-// Check if user has active subscription
-async function checkUserSubscription(userEmail: string): Promise<boolean> {
-  try {
-    // Import the subscription utilities
-    const { hasActiveSubscription } = await import('@/lib/subscription');
-    return await hasActiveSubscription(userEmail);
-  } catch (error) {
-    console.error('[Middleware] Error checking subscription:', error);
-    return false;
-  }
 }
 
 export const config = { 
