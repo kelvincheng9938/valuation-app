@@ -237,13 +237,13 @@ export default function DebugUsagePage() {
             >
               👑 Add Demo Pro User
             </button>
-            
+            <a
               href="/report"
               className="btn px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-700"
             >
               📊 Test Report Page
             </a>
-            
+            <a
               href="/login"
               className="btn px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700"
             >
@@ -258,23 +258,23 @@ export default function DebugUsagePage() {
           <div className="space-y-4 text-sm">
             <div className="flex items-center gap-3">
               <span className="w-6 h-6 bg-blue-500 rounded-full text-white text-xs flex items-center justify-center">1</span>
-              <span>Visitor opens /report → Can view <strong>2 free demo reports</strong></span>
+              <span>Visitor opens /report → Can view 2 free demo reports</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-6 h-6 bg-green-500 rounded-full text-white text-xs flex items-center justify-center">2</span>
-              <span>After 2 reports → Redirected to <strong>Google login</strong></span>
+              <span>After 2 reports → Redirected to Google login</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-6 h-6 bg-purple-500 rounded-full text-white text-xs flex items-center justify-center">3</span>
-              <span>After login → Can view <strong>5 reports per month</strong></span>
+              <span>After login → Can view 5 reports per month</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-6 h-6 bg-orange-500 rounded-full text-white text-xs flex items-center justify-center">4</span>
-              <span>After 5 reports → Redirected to <strong>Stripe upgrade</strong></span>
+              <span>After 5 reports → Redirected to Stripe upgrade</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-6 h-6 bg-yellow-500 rounded-full text-white text-xs flex items-center justify-center">5</span>
-              <span>After payment → <strong>Unlimited access</strong></span>
+              <span>After payment → Unlimited access</span>
             </div>
           </div>
         </div>
