@@ -91,7 +91,7 @@ function checkFreeUsage() {
   if (typeof window === 'undefined') return { hasUsed: false, count: 0 };
 
   const cookies = document.cookie.split(';');
-  the freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
+  const freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
 
   if (!freeUsageCookie) {
     return { hasUsed: false, count: 0 };
@@ -130,7 +130,7 @@ function checkAuthUsage() {
     const cookieValue = decodeURIComponent(authUsageCookie.split('=')[1]);
     const usageData = JSON.parse(cookieValue);
     const now = new Date();
-    the currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
     if (usageData.month !== currentMonth) {
       return { hasUsed: false, count: 0 };
@@ -181,7 +181,7 @@ export default function ReportPage() {
   const searchParams = useSearchParams();
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  the [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [isFirstView, setIsFirstView] = useState(true);
   const [loading, setLoading] = useState(true);
 
