@@ -8,7 +8,7 @@ import { getStockCategories } from '@/lib/demoData'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useTheme } from '@/contexts/ThemeContext'
 
-export default function ReportContent() {
+export default function ReportContent({ onStockChange }) {
   const [stockData, setStockData] = useState(null)
   const [ticker, setTicker] = useState('AAPL')
   const [inputTicker, setInputTicker] = useState('')
@@ -59,8 +59,11 @@ export default function ReportContent() {
   }, [])
 
   const loadStockData = async (symbol) => {
-    setLoading(true)
-    setError(null)
+    // Check usage limits before loading
+  if (props.onStockChange && !props.onStockChange(symbol)) {
+    console.log('[ReportContent] Stock change blocked by usage limits');
+    return;
+  }
     
     try {
       console.log(`Loading data for ${symbol}`)
@@ -876,3 +879,4 @@ export default function ReportContent() {
     </>
   )
 }
+
