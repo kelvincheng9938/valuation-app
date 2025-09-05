@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-// Demo pro users for testing - 你可以在這裡添加測試用戶
+// Demo pro users for testing
 const DEMO_PRO_USERS = [
   'demo@valuationpro.com',
   'pro@example.com'
@@ -22,7 +22,7 @@ export async function middleware(req: NextRequest) {
     if (token?.email) {
       const response = NextResponse.next();
       
-      // Check if user has paid subscription (直接檢查，不要動態導入)
+      // Check if user has paid subscription
       const isPaidUser = DEMO_PRO_USERS.includes(token.email);
       
       if (isPaidUser) {
