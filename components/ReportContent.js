@@ -8,7 +8,7 @@ import { getStockCategories } from '@/lib/demoData'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useTheme } from '@/contexts/ThemeContext'
 
-export default function ReportContent({ onStockChange }) {
+export default function ReportContent() {
   const [stockData, setStockData] = useState(null)
   const [ticker, setTicker] = useState('AAPL')
   const [inputTicker, setInputTicker] = useState('')
@@ -58,12 +58,142 @@ export default function ReportContent({ onStockChange }) {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
+  // Usage checking functions
+  const checkFreeUsage = () => {
+    if (typeof window === 'undefined') return { count: 0 };
+    
+    const cookies = document.cookie.split(';');
+    const freeUsageCookie = cookies.find(cookie => cookie.trim().startsWith('free_usage='));
+    
+    if (!freeUsageCookie) {
+      return { count: 0 };
+    }
+    
+    try {
+      const cookieValue = decodeURIComponent(freeUsageCookie.split('=')[1]);
+      const usageData = JSON.parse(cookieValue);
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (usageData.month !== currentMonth) {
+        return { count: 0 };
+      }
+      
+      return { count: usageData.count || 0 };
+    } catch (e) {
+      return { count: 0 };
+    }
+  };
+
+  const checkAuthUsage = () => {
+    if (typeof window === 'undefined') return { count: 0 };
+    
+    const cookies = document.cookie.split(';');
+    const authUsageCookie = cookies.find(cookie => cookie.trim().startsWith('auth_usage='));
+    
+    if (!authUsageCookie) {
+      return { count: 0 };
+    }
+    
+    try {
+      const cookieValue = decodeURIComponent(authUsageCookie.split('=')[1]);
+      const usageData = JSON.parse(cookieValue);
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (usageData.month !== currentMonth) {
+        return { count: 0 };
+      }
+      
+      return { count: usageData.count || 0 };
+    } catch (e) {
+      return { count: 0 };
+    }
+  };
+
+  const incrementFreeUsage = () => {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const freeUsage = checkFreeUsage();
+    
+    const newUsageData = {
+      month: currentMonth,
+      count: freeUsage.count + 1,
+      timestamp: now.toISOString()
+    };
+    
+    document.cookie = `free_usage=${encodeURIComponent(JSON.stringify(newUsageData))}; path=/; max-age=${60 * 60 * 24 * 31}`;
+    console.log('[ReportContent] Free usage incremented to:', newUsageData.count);
+  };
+
+  const incrementAuthUsage = () => {
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const authUsage = checkAuthUsage();
+    
+    const newUsageData = {
+      month: currentMonth,
+      count: authUsage.count + 1,
+      timestamp: now.toISOString()
+    };
+    
+    document.cookie = `auth_usage=${encodeURIComponent(JSON.stringify(newUsageData))}; path=/; max-age=${60 * 60 * 24 * 31}`;
+    console.log('[ReportContent] Auth usage incremented to:', newUsageData.count);
+  };
+
+  const checkUsageLimits = (newTicker) => {
+    // Skip check for initial load
+    if (!stockData) {
+      console.log('[ReportContent] Initial load, skipping usage check');
+      return true;
+    }
+    
+    console.log('[ReportContent] Checking usage limits for:', newTicker);
+    
+    // Check if user is authenticated (simple check)
+    const isAuthenticated = typeof document !== 'undefined' && document.cookie.includes('next-auth');
+    
+    if (isAuthenticated) {
+      // Check auth usage
+      const authUsage = checkAuthUsage();
+      console.log('[ReportContent] Auth usage:', authUsage.count);
+      
+      if (authUsage.count >= 5) {
+        console.log('[ReportContent] Auth limit exceeded, redirecting to upgrade');
+        if (typeof window !== 'undefined') {
+          window.location.href = `/upgrade?from=${encodeURIComponent('/report')}&reason=monthly_limit`;
+        }
+        return false;
+      }
+      
+      incrementAuthUsage();
+      return true;
+    } else {
+      // Check free usage
+      const freeUsage = checkFreeUsage();
+      console.log('[ReportContent] Free usage:', freeUsage.count);
+      
+      if (freeUsage.count >= 2) {
+        console.log('[ReportContent] Free limit exceeded, redirecting to login');
+        if (typeof window !== 'undefined') {
+          window.location.href = `/login?from=${encodeURIComponent(`/report?ticker=${newTicker}`)}&reason=free_limit`;
+        }
+        return false;
+      }
+      
+      incrementFreeUsage();
+      return true;
+    }
+  };
+
   const loadStockData = async (symbol) => {
-    // Check usage limits before loading
-  if (props.onStockChange && !props.onStockChange(symbol)) {
-    console.log('[ReportContent] Stock change blocked by usage limits');
-    return;
-  }
+    // Check usage limits for stock changes (not initial load)
+    if (!checkUsageLimits(symbol)) {
+      return;
+    }
+    
+    setLoading(true)
+    setError(null)
     
     try {
       console.log(`Loading data for ${symbol}`)
@@ -293,7 +423,10 @@ export default function ReportContent({ onStockChange }) {
                       {category.tickers.map(tickerSymbol => (
                         <button
                           key={tickerSymbol}
-                          onClick={() => loadStockData(tickerSymbol)}
+                          onClick={() => {
+                            console.log('[ReportContent] Button clicked for:', tickerSymbol);
+                            loadStockData(tickerSymbol);
+                          }}
                           className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
                             ticker === tickerSymbol
                               ? 'text-white shadow-lg transform scale-105' 
@@ -325,7 +458,10 @@ export default function ReportContent({ onStockChange }) {
                     {['AAPL', 'NVDA', 'MSFT', 'GOOGL', 'META', '700', 'TSLA', 'LLY'].map(popularTicker => (
                       <button
                         key={popularTicker}
-                        onClick={() => loadStockData(popularTicker)}
+                        onClick={() => {
+                          console.log('[ReportContent] Popular button clicked for:', popularTicker);
+                          loadStockData(popularTicker);
+                        }}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                           ticker === popularTicker
                             ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
@@ -879,4 +1015,3 @@ export default function ReportContent({ onStockChange }) {
     </>
   )
 }
-
