@@ -19,7 +19,15 @@ export async function POST(request) {
       );
     }
 
-    const { priceId } = await request.json();
+    const body = await request.json();
+    const priceId = body.priceId || process.env.STRIPE_PRICE_ID;
+    
+    if (!priceId) {
+      return NextResponse.json(
+        { error: 'Price ID not provided' }, 
+        { status: 400 }
+      );
+    }
     
     // Create or retrieve Stripe customer
     let customer;
@@ -57,7 +65,7 @@ export async function POST(request) {
       mode: 'subscription',
       line_items: [
         {
-          price: priceId || 'price_1ABC123', // Your actual Price ID
+          price: priceId,
           quantity: 1,
         },
       ],
