@@ -224,16 +224,16 @@ export default function ReportPage() {
     console.log('[Report] Free usage check:', freeUsage);
 
     if (!urlTicker) {
-      console.log('[Report] No ticker - showing first view with banner');
-      setShowLoginPrompt(false);
-      setShowUpgradePrompt(false);
-      setIsFirstView(true);
-      setLoading(false);
-    } else if (urlTicker && !freeUsage.hasUsed) {
-      console.log('[Report] Has ticker, not exceeded free limit - showing report');
-      if (lastTickerRef.current !== urlTicker) {
-        incrementFreeUsage();
-        lastTickerRef.current = urlTicker;
+           if (freeUsage.hasUsed) {
+        console.log('[Report] No ticker, exceeded free limit - showing login prompt');
+        setShowLoginPrompt(true);
+        setShowUpgradePrompt(false);
+        setIsFirstView(false);
+      } else {
+        console.log('[Report] No ticker - showing first view with banner');
+        setShowLoginPrompt(false);
+        setShowUpgradePrompt(false);
+        setIsFirstView(true);
       }
       setShowLoginPrompt(false);
       setShowUpgradePrompt(false);
