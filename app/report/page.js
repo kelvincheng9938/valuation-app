@@ -25,7 +25,7 @@ function LoginPrompt({ onLogin, onSkip }) {
         <div className="text-4xl mb-4">🚀</div>
         <h2 className="text-2xl font-bold mb-4">Ready for More Analysis?</h2>
         <p className="text-gray-300 mb-6 leading-relaxed">
-          You've seen your <strong>free preview report</strong>! Sign in with Google to unlock:
+          You've seen your <strong>free preview reports</strong>! Sign in with Google to unlock:
         </p>
         
         <div className="grid md:grid-cols-3 gap-4 mb-6">
@@ -111,7 +111,7 @@ function checkFreeUsage() {
     }
     
     return { 
-      hasUsed: (usageData.count || 0) >= 1, 
+      hasUsed: (usageData.count || 0) >= 2, 
       count: usageData.count || 0 
     };
   } catch (e) {
@@ -148,10 +148,10 @@ export default function ReportPage() {
     const freeUsage = checkFreeUsage();
     console.log('[Report] Free usage check:', freeUsage);
 
-    // SIMPLE LOGIC:
+    // Logic:
     // 1. If no ticker in URL (/report) -> show free demo with banner
-    // 2. If ticker in URL AND not used free view -> show free demo  
-    // 3. If ticker in URL AND already used free view -> show login prompt
+    // 2. If ticker in URL AND not used 2 free views -> show free demo  
+    // 3. If ticker in URL AND already used 2 free views -> show login prompt
 
     if (!urlTicker) {
       console.log('[Report] No ticker - showing first view with banner');
@@ -159,38 +159,17 @@ export default function ReportPage() {
       setIsFirstView(true);
       setLoading(false);
     } else if (urlTicker && !freeUsage.hasUsed) {
-      console.log('[Report] Has ticker, no free usage - showing first view');
+      console.log('[Report] Has ticker, not exceeded free limit - showing report');
       setShowLoginPrompt(false);
       setIsFirstView(true);
       setLoading(false);
     } else if (urlTicker && freeUsage.hasUsed) {
-      console.log('[Report] Has ticker, already used free view - showing login prompt');
+      console.log('[Report] Has ticker, exceeded free limit - showing login prompt');
       setShowLoginPrompt(true);
       setIsFirstView(false);
       setLoading(false);
     }
   }, [status, urlTicker]);
-
-  const handleStockChange = (newTicker) => {
-    console.log('[Report] Stock change requested:', newTicker);
-    
-    if (status === 'authenticated') {
-      console.log('[Report] User authenticated - allowing stock change');
-      return true;
-    }
-
-    const freeUsage = checkFreeUsage();
-    console.log('[Report] handleStockChange - Free usage:', freeUsage);
-    
-    if (freeUsage.hasUsed) {
-      console.log('[Report] Already used free view - showing login prompt');
-      setShowLoginPrompt(true);
-      return false; // Prevent stock change
-    }
-    
-    console.log('[Report] Haven\'t used free view - allowing change');
-    return true; // Allow stock change
-  };
 
   const handleLoginClick = () => {
     console.log('[Report] Login clicked');
@@ -207,7 +186,7 @@ export default function ReportPage() {
     return <LoadingState />;
   }
 
-  // Show login prompt for unauthenticated users who have used their free view
+  // Show login prompt for unauthenticated users who have used their free views
   if (showLoginPrompt && status === 'unauthenticated') {
     console.log('[Report] Rendering login prompt');
     return <LoginPrompt onLogin={handleLoginClick} onSkip={handleSkipLogin} />;
@@ -219,7 +198,7 @@ export default function ReportPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {isFirstView && status === 'unauthenticated' && <LimitBanner isFirstTime={true} />}
-      <ReportContent onStockChange={handleStockChange} />
+      <ReportContent />
     </div>
   );
 }
