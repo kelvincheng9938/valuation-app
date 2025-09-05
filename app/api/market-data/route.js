@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 
 // Simple in-memory storage for demo purposes
-// In production, you'd use a database
 let marketDataStore = {
   sp500: { price: 6045.23, change: 0.85 },
   nasdaq: { price: 19892.15, change: 1.12 },
@@ -31,7 +30,6 @@ export async function POST(request) {
   try {
     const data = await request.json()
     
-    // Validate input data
     const validKeys = ['sp500', 'nasdaq', 'bitcoin', 'gold', 'oil']
     const updates = {}
     
@@ -53,15 +51,12 @@ export async function POST(request) {
       )
     }
     
-    // Update the stored data
     marketDataStore = {
       ...marketDataStore,
       ...updates,
       lastUpdated: new Date().toISOString(),
       dataSource: 'manual'
     }
-    
-    console.log('Market data updated:', updates)
     
     return NextResponse.json({
       success: true,
