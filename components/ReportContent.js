@@ -141,13 +141,7 @@ export default function ReportContent() {
     console.log('[ReportContent] Auth usage incremented to:', newUsageData.count);
   };
 
-  const checkUsageLimits = (newTicker) => {
-    // Skip check for initial load
-    if (!stockData) {
-      console.log('[ReportContent] Initial load, skipping usage check');
-      return true;
-    }
-    
+   const checkUsageLimits = (newTicker) => {
     console.log('[ReportContent] Checking usage limits for:', newTicker);
     
     // Check if user is authenticated (simple check)
@@ -1015,3 +1009,4 @@ export default function ReportContent() {
     </>
   )
 }
+
