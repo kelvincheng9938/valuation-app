@@ -16,11 +16,12 @@ export async function middleware(req: NextRequest) {
     if (token) {
       const response = NextResponse.next();
       
-      // Check if user has paid subscription (you'll need to implement this)
-      const hasPaidSubscription = false; // TODO: Check user's payment status from database
+      // Check if user has paid subscription
+      const hasPaidSubscription = await checkUserSubscription(token.email);
       
       if (hasPaidSubscription) {
         // Paid users get unlimited access
+        console.log(`[Middleware] Pro user ${token.email} - unlimited access`);
         return response;
       }
       
@@ -155,6 +156,18 @@ export async function middleware(req: NextRequest) {
   }
   
   return NextResponse.next();
+}
+
+// Check if user has active subscription
+async function checkUserSubscription(userEmail: string): Promise<boolean> {
+  try {
+    // Import the subscription utilities
+    const { hasActiveSubscription } = await import('@/lib/subscription');
+    return await hasActiveSubscription(userEmail);
+  } catch (error) {
+    console.error('[Middleware] Error checking subscription:', error);
+    return false;
+  }
 }
 
 export const config = { 
