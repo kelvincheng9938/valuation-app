@@ -46,7 +46,7 @@ export async function POST(request) {
           email: session.user.email,
           name: session.user.name,
           metadata: {
-            userId: session.user.email, // You might want to use actual user ID
+            userId: session.user.email,
           },
         });
       }
