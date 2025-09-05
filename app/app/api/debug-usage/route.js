@@ -9,6 +9,17 @@ export async function GET(request) {
       secret: process.env.NEXTAUTH_SECRET 
     });
 
+    // Get subscription status if authenticated
+    let subscriptionStatus = null;
+    if (token?.email) {
+      try {
+        const { getSubscriptionStatus } = await import('@/lib/subscription');
+        subscriptionStatus = await getSubscriptionStatus(token.email);
+      } catch (error) {
+        console.error('Error getting subscription status:', error);
+      }
+    }
+
     // Get both usage cookies
     const cookies = request.cookies;
     const freeUsageCookie = cookies.get('free_usage');
@@ -62,6 +73,9 @@ export async function GET(request) {
       userEmail: token?.email || null,
       currentMonth,
       
+      // Subscription status
+      subscription: subscriptionStatus,
+      
       // Free usage (unauthenticated)
       freeUsage: {
         cookie: freeUsageData,
@@ -80,11 +94,11 @@ export async function GET(request) {
       
       // Overall user status
       userStatus: {
-        canViewReports: token ? 
-          !authUsageStatus.hasExceededLimit : 
-          !freeUsageStatus.hasExceededLimit,
+        canViewReports: subscriptionStatus?.isActive || 
+                       (token ? !authUsageStatus.hasExceededLimit : !freeUsageStatus.hasExceededLimit),
         needsLogin: !token && freeUsageStatus.hasExceededLimit,
-        needsUpgrade: token && authUsageStatus.hasExceededLimit,
+        needsUpgrade: token && !subscriptionStatus?.isActive && authUsageStatus.hasExceededLimit,
+        isPro: subscriptionStatus?.isActive || false,
         totalAnalysesUsed: (freeUsageData?.count || 0) + (authUsageData?.count || 0)
       },
       
