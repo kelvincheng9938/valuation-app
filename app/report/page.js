@@ -181,7 +181,7 @@ export default function ReportPage() {
   const searchParams = useSearchParams();
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  the [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [isFirstView, setIsFirstView] = useState(true);
   const [loading, setLoading] = useState(true);
 
@@ -294,7 +294,7 @@ export default function ReportPage() {
   };
 
   if (loading) {
-    return <LoadingState />;
+      return <LoadingState />;
   }
 
   // Show upgrade prompt for authenticated users who exceeded limit
