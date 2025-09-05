@@ -12,12 +12,76 @@ export async function middleware(req: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET 
     });
     
-    // If user is authenticated, let them through normally
+    // If user is authenticated, handle authenticated user logic
     if (token) {
-      return NextResponse.next();
+      const response = NextResponse.next();
+      
+      // Check if user has paid subscription (you'll need to implement this)
+      const hasPaidSubscription = false; // TODO: Check user's payment status from database
+      
+      if (hasPaidSubscription) {
+        // Paid users get unlimited access
+        return response;
+      }
+      
+      // Free authenticated users get 5 total views
+      const authUsageCookie = req.cookies.get('auth_usage');
+      let authUsage = 0;
+      const now = new Date();
+      const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      
+      if (authUsageCookie) {
+        try {
+          const usageData = JSON.parse(authUsageCookie.value);
+          
+          // Reset if different month
+          if (usageData.month === thisMonth) {
+            authUsage = usageData.count || 0;
+          } else {
+            authUsage = 0;
+          }
+        } catch (e) {
+          authUsage = 0;
+        }
+      }
+      
+      // Check if this is a stock change request
+      const url = new URL(req.url);
+      const hasTickerParam = url.searchParams.has('ticker') || url.pathname !== '/report';
+      
+      // If they've used all 5 views, redirect to upgrade page
+      if (hasTickerParam && authUsage >= 5) {
+        console.log(`[Middleware] Auth user exceeded 5 views - usage: ${authUsage}`);
+        const upgradeUrl = new URL('/upgrade', req.url);
+        upgradeUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
+        upgradeUrl.searchParams.set('reason', 'monthly_limit');
+        return NextResponse.redirect(upgradeUrl);
+      }
+      
+      // If accessing a stock and haven't exceeded limit, increment counter
+      if (hasTickerParam && authUsage < 5) {
+        const newUsageData = {
+          month: thisMonth,
+          count: authUsage + 1,
+          timestamp: now.toISOString(),
+          userEmail: token.email
+        };
+        
+        response.cookies.set('auth_usage', JSON.stringify(newUsageData), {
+          maxAge: 60 * 60 * 24 * 31, // 31 days
+          path: '/',
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax'
+        });
+        
+        console.log(`[Middleware] Incrementing auth usage:`, newUsageData);
+      }
+      
+      return response;
     }
     
-    // For unauthenticated users, handle free usage
+    // For unauthenticated users, handle free usage (2 views before login required)
     const response = NextResponse.next();
     
     // Check if this is a stock change request (has ticker parameter)
@@ -53,9 +117,9 @@ export async function middleware(req: NextRequest) {
       currentMonth = thisMonth;
     }
     
-    // If this is a stock change and they've already used their free view, redirect to login
-    if (hasTickerParam && freeUsage >= 1) {
-      console.log(`[Middleware] Redirecting to login - usage: ${freeUsage}`);
+    // If this is a stock change and they've used 2 free views, redirect to login
+    if (hasTickerParam && freeUsage >= 2) {
+      console.log(`[Middleware] Redirecting to login - usage: ${freeUsage}/2`);
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
       loginUrl.searchParams.set('reason', 'free_limit');
@@ -68,11 +132,11 @@ export async function middleware(req: NextRequest) {
       return response;
     }
     
-    // If they're trying to view a stock and haven't used their free view, increment counter
-    if (hasTickerParam && freeUsage === 0) {
+    // If they're trying to view a stock and haven't used 2 free views, increment counter
+    if (hasTickerParam && freeUsage < 2) {
       const newUsageData = {
         month: currentMonth,
-        count: 1,
+        count: freeUsage + 1,
         timestamp: now.toISOString()
       };
       
