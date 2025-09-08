@@ -70,27 +70,6 @@ export async function POST(request) {
       );
     }
 
-    // First, verify the price exists
-    try {
-      console.log('🔍 Verifying price exists in Stripe...');
-      const price = await stripe.prices.retrieve(priceId);
-      console.log('✅ Price verified:', price.id, 'Active:', price.active);
-      
-      if (!price.active) {
-        console.error('❌ Price is not active:', priceId);
-        return NextResponse.json(
-          { error: 'Price is not active. Please activate it in your Stripe dashboard.' }, 
-          { status: 400 }
-        );
-      }
-    } catch (priceError) {
-      console.error('❌ Price verification failed:', priceError);
-      return NextResponse.json(
-        { error: `Price ID "${priceId}" not found in your Stripe account. Please check your STRIPE_PRICE_ID.` }, 
-        { status: 400 }
-      );
-    }
-
     // Create or retrieve Stripe customer
     let customer;
     try {
@@ -134,9 +113,9 @@ export async function POST(request) {
     const origin = request.headers.get('origin') || 'https://www.valuation-pro.com';
     console.log('🌐 Using origin for redirects:', origin);
 
-    // Create checkout session with additional validation
+    // 🔥 FIXED: Remove customer_email since we're using customer
     const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customer.id,
+      customer: customer.id, // ✅ Using customer ID
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [
@@ -161,8 +140,7 @@ export async function POST(request) {
       },
       // Add billing address collection
       billing_address_collection: 'required',
-      // Add customer email in session for extra verification
-      customer_email: session.user.email,
+      // 🔥 REMOVED: customer_email (this was causing the conflict!)
       // Add automatic tax calculation if applicable
       automatic_tax: {
         enabled: true,
