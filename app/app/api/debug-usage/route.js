@@ -1,5 +1,7 @@
+// app/api/debug-usage/route.js
 import { NextResponse } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { getSubscriptionStatus } from '@/lib/subscription'
 
 export async function GET(request) {
   try {
@@ -13,7 +15,6 @@ export async function GET(request) {
     let subscriptionStatus = null;
     if (token?.email) {
       try {
-        const { getSubscriptionStatus } = await import('@/lib/subscription');
         subscriptionStatus = await getSubscriptionStatus(token.email);
       } catch (error) {
         console.error('Error getting subscription status:', error);
