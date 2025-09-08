@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+// FIXED: Use static imports
+import {
+  updateUserSubscription,
+  hasActiveSubscription,
+  cancelUserSubscription,
+  getSubscriptionStore
+} from '@/lib/subscription';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: '2023-10-16',
@@ -84,7 +91,7 @@ export async function POST(request) {
   }
 }
 
-// 🔥 NEW: Handle checkout completion (immediate activation)
+// 🔥 Handle checkout completion (immediate activation)
 async function handleCheckoutCompleted(checkoutSession) {
   console.log('🛒 Processing checkout completion:', checkoutSession.id);
   
@@ -99,8 +106,6 @@ async function handleCheckoutCompleted(checkoutSession) {
     if (checkoutSession.mode === 'subscription' && checkoutSession.subscription) {
       const subscription = await stripe.subscriptions.retrieve(checkoutSession.subscription);
       
-      // Import and update subscription status
-      const { updateUserSubscription } = await import('@/lib/subscription');
       await updateUserSubscription(userEmail, {
         stripeCustomerId: customer.id,
         stripeSubscriptionId: subscription.id,
@@ -130,8 +135,6 @@ async function handleSubscriptionCreated(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // Update user status in subscription store
-    const { updateUserSubscription } = await import('@/lib/subscription');
     await updateUserSubscription(userEmail, {
       stripeCustomerId: customer.id,
       stripeSubscriptionId: subscription.id,
@@ -146,7 +149,6 @@ async function handleSubscriptionCreated(subscription) {
     console.log(`✅ Subscription activated for user: ${userEmail}`);
     
     // 🔥 Verify the activation worked
-    const { hasActiveSubscription } = await import('@/lib/subscription');
     const isActive = await hasActiveSubscription(userEmail);
     console.log(`🔍 Verification check: ${userEmail} active = ${isActive}`);
     
@@ -163,8 +165,6 @@ async function handleSubscriptionUpdated(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // Update subscription status in store
-    const { updateUserSubscription } = await import('@/lib/subscription');
     await updateUserSubscription(userEmail, {
       status: subscription.status,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
@@ -187,8 +187,6 @@ async function handleSubscriptionCanceled(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // Update user status to canceled
-    const { cancelUserSubscription } = await import('@/lib/subscription');
     await cancelUserSubscription(userEmail);
     
     console.log(`✅ Subscription canceled for user: ${userEmail}`);
@@ -210,10 +208,6 @@ async function handlePaymentSucceeded(invoice) {
     
     console.log(`✅ Payment succeeded for user: ${userEmail}`);
     
-    // Ensure subscription is active in our system
-    const { updateUserSubscription, hasActiveSubscription } = await import('@/lib/subscription');
-    
-    // Update the subscription with payment confirmation
     await updateUserSubscription(userEmail, {
       status: 'active',
       lastPaymentAt: new Date().toISOString(),
@@ -237,7 +231,6 @@ async function handlePaymentFailed(invoice) {
     console.log(`❌ Payment failed for user: ${userEmail}`);
     
     // TODO: Handle failed payment - send email, update status, etc.
-    // You might want to keep the subscription active for a grace period
   }
 }
 
