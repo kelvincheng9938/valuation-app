@@ -8,8 +8,10 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
 export async function POST(request) {
+  console.log('🎣 Stripe webhook received');
+  
   if (!webhookSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not set');
+    console.error('❌ STRIPE_WEBHOOK_SECRET is not set');
     return NextResponse.json(
       { error: 'Webhook secret not configured' }, 
       { status: 500 }
@@ -37,38 +39,86 @@ export async function POST(request) {
   // Handle the event
   try {
     switch (event.type) {
+      case 'checkout.session.completed':
+        console.log('🛒 Checkout session completed');
+        await handleCheckoutCompleted(event.data.object);
+        break;
+        
       case 'customer.subscription.created':
+        console.log('📝 Subscription created');
         await handleSubscriptionCreated(event.data.object);
         break;
         
       case 'customer.subscription.updated':
+        console.log('🔄 Subscription updated');
         await handleSubscriptionUpdated(event.data.object);
         break;
         
       case 'customer.subscription.deleted':
+        console.log('❌ Subscription deleted');
         await handleSubscriptionCanceled(event.data.object);
         break;
         
       case 'invoice.payment_succeeded':
+        console.log('💰 Payment succeeded');
         await handlePaymentSucceeded(event.data.object);
         break;
         
       case 'invoice.payment_failed':
+        console.log('💸 Payment failed');
         await handlePaymentFailed(event.data.object);
         break;
         
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        console.log(`ℹ️ Unhandled event type: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
     
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('❌ Error processing webhook:', error);
     return NextResponse.json(
       { error: 'Webhook processing failed' }, 
       { status: 500 }
     );
+  }
+}
+
+// 🔥 NEW: Handle checkout completion (immediate activation)
+async function handleCheckoutCompleted(checkoutSession) {
+  console.log('🛒 Processing checkout completion:', checkoutSession.id);
+  
+  try {
+    // Get customer details
+    const customer = await stripe.customers.retrieve(checkoutSession.customer);
+    const userEmail = customer.email;
+    
+    console.log(`✅ Checkout completed for user: ${userEmail}`);
+    
+    // If this is a subscription checkout, activate immediately
+    if (checkoutSession.mode === 'subscription' && checkoutSession.subscription) {
+      const subscription = await stripe.subscriptions.retrieve(checkoutSession.subscription);
+      
+      // Import and update subscription status
+      const { updateUserSubscription } = await import('@/lib/subscription');
+      await updateUserSubscription(userEmail, {
+        stripeCustomerId: customer.id,
+        stripeSubscriptionId: subscription.id,
+        status: subscription.status,
+        planId: subscription.items.data[0].price.id,
+        currentPeriodStart: new Date(subscription.current_period_start * 1000),
+        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        source: 'stripe_checkout',
+        checkoutSessionId: checkoutSession.id,
+        activatedAt: new Date().toISOString(),
+      });
+      
+      console.log(`🎉 IMMEDIATE ACTIVATION: ${userEmail} now has Pro access!`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error handling checkout completion:', error);
+    throw error;
   }
 }
 
@@ -80,21 +130,28 @@ async function handleSubscriptionCreated(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // Update user status in database using subscription utilities
+    // Update user status in subscription store
     const { updateUserSubscription } = await import('@/lib/subscription');
     await updateUserSubscription(userEmail, {
       stripeCustomerId: customer.id,
       stripeSubscriptionId: subscription.id,
-      status: 'active',
+      status: subscription.status,
       planId: subscription.items.data[0].price.id,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      source: 'stripe_webhook',
+      createdAt: new Date().toISOString(),
     });
     
     console.log(`✅ Subscription activated for user: ${userEmail}`);
     
+    // 🔥 Verify the activation worked
+    const { hasActiveSubscription } = await import('@/lib/subscription');
+    const isActive = await hasActiveSubscription(userEmail);
+    console.log(`🔍 Verification check: ${userEmail} active = ${isActive}`);
+    
   } catch (error) {
-    console.error('Error handling subscription created:', error);
+    console.error('❌ Error handling subscription created:', error);
     throw error;
   }
 }
@@ -106,18 +163,19 @@ async function handleSubscriptionUpdated(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // Update subscription status in database
+    // Update subscription status in store
     const { updateUserSubscription } = await import('@/lib/subscription');
     await updateUserSubscription(userEmail, {
       status: subscription.status,
       currentPeriodStart: new Date(subscription.current_period_start * 1000),
       currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+      updatedAt: new Date().toISOString(),
     });
     
-    console.log(`✅ Subscription updated for user: ${userEmail}`);
+    console.log(`✅ Subscription updated for user: ${userEmail} - Status: ${subscription.status}`);
     
   } catch (error) {
-    console.error('Error handling subscription updated:', error);
+    console.error('❌ Error handling subscription updated:', error);
     throw error;
   }
 }
@@ -129,14 +187,14 @@ async function handleSubscriptionCanceled(subscription) {
     const customer = await stripe.customers.retrieve(subscription.customer);
     const userEmail = customer.email;
     
-    // Update user status to canceled in database
+    // Update user status to canceled
     const { cancelUserSubscription } = await import('@/lib/subscription');
     await cancelUserSubscription(userEmail);
     
     console.log(`✅ Subscription canceled for user: ${userEmail}`);
     
   } catch (error) {
-    console.error('Error handling subscription canceled:', error);
+    console.error('❌ Error handling subscription canceled:', error);
     throw error;
   }
 }
@@ -152,7 +210,19 @@ async function handlePaymentSucceeded(invoice) {
     
     console.log(`✅ Payment succeeded for user: ${userEmail}`);
     
-    // TODO: Log payment in database, send confirmation email, etc.
+    // Ensure subscription is active in our system
+    const { updateUserSubscription, hasActiveSubscription } = await import('@/lib/subscription');
+    
+    // Update the subscription with payment confirmation
+    await updateUserSubscription(userEmail, {
+      status: 'active',
+      lastPaymentAt: new Date().toISOString(),
+      lastInvoiceId: invoice.id,
+    });
+    
+    // Verify activation
+    const isActive = await hasActiveSubscription(userEmail);
+    console.log(`🔍 Payment verification: ${userEmail} active = ${isActive}`);
   }
 }
 
@@ -167,14 +237,9 @@ async function handlePaymentFailed(invoice) {
     console.log(`❌ Payment failed for user: ${userEmail}`);
     
     // TODO: Handle failed payment - send email, update status, etc.
+    // You might want to keep the subscription active for a grace period
   }
 }
-
-// TODO: Implement these database functions
-// async function updateUserSubscription(email, subscriptionData) {
-//   // Update user subscription status in your database
-//   // This could be MongoDB, PostgreSQL, Supabase, etc.
-// }
 
 // Enable CORS for Stripe webhooks
 export async function OPTIONS() {
