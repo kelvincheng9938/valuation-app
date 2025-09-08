@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
-// Demo pro users for testing
-const DEMO_PRO_USERS = [
-  'demo@valuationpro.com',
-  'pro@example.com',
-  'kelvincheng9938@gmail.com'
-];
-
 export async function middleware(req) {
   console.log(`[Middleware] ${req.method} ${req.nextUrl.pathname}${req.nextUrl.search}`);
   
@@ -32,10 +25,20 @@ export async function middleware(req) {
     if (token?.email) {
       console.log(`[Middleware] Authenticated user: ${token.email}`);
       
-      // Check if Pro user
-      if (DEMO_PRO_USERS.includes(token.email)) {
-        console.log(`[Middleware] Pro user - unlimited access`);
-        return response;
+      // 🔥 NEW: Check if user has active Stripe subscription
+      try {
+        // Import the subscription checker
+        const { hasActiveSubscription } = await import('./lib/subscription');
+        const isProUser = await hasActiveSubscription(token.email);
+        
+        if (isProUser) {
+          console.log(`[Middleware] ✅ Pro user detected - unlimited access: ${token.email}`);
+          return response;
+        } else {
+          console.log(`[Middleware] ❌ No active subscription found for: ${token.email}`);
+        }
+      } catch (error) {
+        console.error('[Middleware] Error checking subscription:', error);
       }
 
       // Check auth usage for free authenticated users (5 per month)
@@ -77,7 +80,6 @@ export async function middleware(req) {
           path: '/',
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax'
-          // Remove httpOnly so JavaScript can read it
         });
 
         console.log(`[Middleware] Auth usage incremented to: ${newUsageData.count}`);
@@ -128,7 +130,6 @@ export async function middleware(req) {
         path: '/',
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax'
-        // Remove httpOnly so JavaScript can read it
       });
 
       console.log(`[Middleware] Free usage incremented to: ${newUsageData.count}`);
