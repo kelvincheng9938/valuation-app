@@ -26,7 +26,7 @@ export default function UpgradePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          priceId: 'price_1ABC123' // Replace with your actual Stripe Price ID
+          priceId: 'price_1S4zd95dclfKdBZ6rPqyEmL3' // Replace with your actual Stripe Price ID
         }),
       });
 
