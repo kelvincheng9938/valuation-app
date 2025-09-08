@@ -38,7 +38,7 @@ export async function POST(request) {
     if (!process.env.STRIPE_PRICE_ID) {
       console.error('❌ STRIPE_PRICE_ID not set');
       return NextResponse.json(
-        { error: 'Price configuration missing' }, 
+        { error: 'Price configuration missing. Please check STRIPE_PRICE_ID in environment variables.' }, 
         { status: 500 }
       );
     }
@@ -65,7 +65,28 @@ export async function POST(request) {
     if (!priceId || !priceId.startsWith('price_')) {
       console.error('❌ Invalid price ID format:', priceId);
       return NextResponse.json(
-        { error: 'Invalid price configuration' }, 
+        { error: 'Invalid price configuration. Price ID must start with "price_"' }, 
+        { status: 400 }
+      );
+    }
+
+    // First, verify the price exists
+    try {
+      console.log('🔍 Verifying price exists in Stripe...');
+      const price = await stripe.prices.retrieve(priceId);
+      console.log('✅ Price verified:', price.id, 'Active:', price.active);
+      
+      if (!price.active) {
+        console.error('❌ Price is not active:', priceId);
+        return NextResponse.json(
+          { error: 'Price is not active. Please activate it in your Stripe dashboard.' }, 
+          { status: 400 }
+        );
+      }
+    } catch (priceError) {
+      console.error('❌ Price verification failed:', priceError);
+      return NextResponse.json(
+        { error: `Price ID "${priceId}" not found in your Stripe account. Please check your STRIPE_PRICE_ID.` }, 
         { status: 400 }
       );
     }
@@ -113,7 +134,7 @@ export async function POST(request) {
     const origin = request.headers.get('origin') || 'https://www.valuation-pro.com';
     console.log('🌐 Using origin for redirects:', origin);
 
-    // Create checkout session
+    // Create checkout session with additional validation
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customer.id,
       payment_method_types: ['card'],
@@ -146,6 +167,8 @@ export async function POST(request) {
       automatic_tax: {
         enabled: true,
       },
+      // Allow promotion codes
+      allow_promotion_codes: true,
     });
 
     console.log('✅ Checkout session created successfully!');
@@ -160,6 +183,11 @@ export async function POST(request) {
       sessionId: checkoutSession.id,
       url: checkoutSession.url,
       customerId: customer.id,
+      debug: {
+        priceId: priceId,
+        userEmail: session.user.email,
+        origin: origin
+      }
     });
 
   } catch (error) {
@@ -168,7 +196,7 @@ export async function POST(request) {
     // Return more specific error messages based on error type
     if (error.type === 'StripeAuthenticationError') {
       return NextResponse.json(
-        { error: 'Payment system authentication failed. Please contact support.' }, 
+        { error: 'Stripe authentication failed. Please check your STRIPE_SECRET_KEY.' }, 
         { status: 500 }
       );
     }
@@ -182,13 +210,20 @@ export async function POST(request) {
       
       if (error.code === 'resource_missing') {
         return NextResponse.json(
-          { error: 'Price configuration not found. Please contact support.' }, 
+          { error: `Price ID "${process.env.STRIPE_PRICE_ID}" not found. Please create this price in your Stripe dashboard.` }, 
+          { status: 400 }
+        );
+      }
+      
+      if (error.param === 'line_items[0].price') {
+        return NextResponse.json(
+          { error: `Invalid price ID "${process.env.STRIPE_PRICE_ID}". Please check your Stripe dashboard.` }, 
           { status: 400 }
         );
       }
       
       return NextResponse.json(
-        { error: 'Invalid payment configuration. Please contact support.' }, 
+        { error: `Stripe error: ${error.message}. Please check your Stripe configuration.` }, 
         { status: 500 }
       );
     }
@@ -200,9 +235,9 @@ export async function POST(request) {
       );
     }
     
-    // Generic error
+    // Generic error with more details
     return NextResponse.json(
-      { error: 'Failed to create checkout session. Please try again in a few moments.' }, 
+      { error: `Checkout creation failed: ${error.message}` }, 
       { status: 500 }
     );
   }
