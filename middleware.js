@@ -1,5 +1,9 @@
+// middleware.js
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+
+// Note: Middleware runs in Edge Runtime, so we can't use Node.js modules
+// We'll need to make a call to an API route to check subscription status
 
 export async function middleware(req) {
   console.log(`[Middleware] ${req.method} ${req.nextUrl.pathname}${req.nextUrl.search}`);
@@ -25,20 +29,33 @@ export async function middleware(req) {
     if (token?.email) {
       console.log(`[Middleware] Authenticated user: ${token.email}`);
       
-      // 🔥 NEW: Check if user has active Stripe subscription
+      // 🔥 Check subscription via API endpoint (Edge Runtime compatible)
       try {
-        // Import the subscription checker
-        const { hasActiveSubscription } = await import('./lib/subscription');
-        const isProUser = await hasActiveSubscription(token.email);
+        // Create internal URL for subscription check
+        const baseUrl = req.nextUrl.origin;
+        const checkUrl = `${baseUrl}/api/check-subscription?email=${encodeURIComponent(token.email)}`;
         
-        if (isProUser) {
-          console.log(`[Middleware] ✅ Pro user detected - unlimited access: ${token.email}`);
-          return response;
-        } else {
-          console.log(`[Middleware] ❌ No active subscription found for: ${token.email}`);
+        // Make internal API call
+        const subscriptionResponse = await fetch(checkUrl, {
+          method: 'GET',
+          headers: {
+            'x-internal-request': 'true', // Security header to identify internal requests
+          },
+        });
+        
+        if (subscriptionResponse.ok) {
+          const { isActive } = await subscriptionResponse.json();
+          
+          if (isActive) {
+            console.log(`[Middleware] ✅ Pro user detected - unlimited access: ${token.email}`);
+            return response;
+          } else {
+            console.log(`[Middleware] ❌ No active subscription found for: ${token.email}`);
+          }
         }
       } catch (error) {
         console.error('[Middleware] Error checking subscription:', error);
+        // Continue with regular flow if subscription check fails
       }
 
       // Check auth usage for free authenticated users (5 per month)
