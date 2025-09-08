@@ -52,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: '🎉 Stripe API is working correctly!',
+      message: '🎉 Your NEW Stripe API keys are working perfectly!',
       account: {
         id: account.id,
         country: account.country,
@@ -63,15 +63,20 @@ export async function GET() {
         active: price.active,
         currency: price.currency,
         amount: price.unit_amount,
-        interval: price.recurring?.interval
+        amount_display: `${(price.unit_amount / 100).toFixed(2)}`,
+        interval: price.recurring?.interval,
+        product_name: 'ValuationPro Pro'
       },
       environment: {
         hasSecretKey: true,
         hasPriceId: true,
         hasPublishableKey,
-        keyType: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'LIVE' : 'TEST'
+        keyType: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? '🔴 LIVE MODE' : '🟡 TEST MODE',
+        secretKeyPreview: process.env.STRIPE_SECRET_KEY?.substring(0, 20) + '...',
+        priceIdUsed: process.env.STRIPE_PRICE_ID
       },
-      productsCount: products.data.length
+      productsCount: products.data.length,
+      readyForCheckout: true
     });
 
   } catch (error) {
