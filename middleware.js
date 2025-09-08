@@ -4,7 +4,8 @@ import { getToken } from 'next-auth/jwt';
 // Demo pro users for testing
 const DEMO_PRO_USERS = [
   'demo@valuationpro.com',
-  'pro@example.com'
+  'pro@example.com',
+  'kelvincheng9938@gmail.com'
 ];
 
 export async function middleware(req) {
