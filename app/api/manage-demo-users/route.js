@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+// FIXED: Use static imports
+import {
+  getSubscriptionStore,
+  addDemoProUser,
+  removeDemoProUser,
+  hasActiveSubscription
+} from '@/lib/subscription';
 
 export async function GET(request) {
   try {
-    // Import subscription utilities
-    const { getSubscriptionStore } = await import('@/lib/subscription');
-    
     // Get current demo users and subscription store
     const storeData = getSubscriptionStore();
     
@@ -28,7 +32,6 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     // For security, require authentication in production
-    // In development, allow for easier testing
     if (process.env.NODE_ENV === 'production') {
       const session = await getServerSession(authOptions);
       if (!session) {
@@ -47,14 +50,6 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    // Import subscription utilities
-    const { 
-      addDemoProUser, 
-      removeDemoProUser, 
-      hasActiveSubscription,
-      getSubscriptionStore 
-    } = await import('@/lib/subscription');
 
     let result = {};
 
@@ -116,20 +111,12 @@ export async function POST(request) {
 export async function DELETE(request) {
   try {
     // Clear all demo users and subscription store
-    const { 
-      removeDemoProUser, 
-      getSubscriptionStore 
-    } = await import('@/lib/subscription');
-
     const storeData = getSubscriptionStore();
     
     // Remove all demo pro users
     storeData.demoProUsers.forEach(email => {
       removeDemoProUser(email);
     });
-
-    // Note: In production, you might want to clear the actual database
-    // For now, we're just clearing the in-memory store
 
     return NextResponse.json({
       success: true,
