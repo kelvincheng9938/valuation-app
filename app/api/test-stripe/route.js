@@ -1,4 +1,4 @@
-// app/api/test-stripe/route.js - Simple Stripe API Test
+// app/api/test-stripe/route.js - 測試 Stripe 連接
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
@@ -9,17 +9,22 @@ export async function GET() {
     // Check environment variables
     const hasSecretKey = !!process.env.STRIPE_SECRET_KEY;
     const hasPriceId = !!process.env.STRIPE_PRICE_ID;
+    const hasPublishableKey = !!process.env.STRIPE_PUBLISHABLE_KEY;
     
     console.log('Environment check:');
     console.log('- STRIPE_SECRET_KEY exists:', hasSecretKey);
     console.log('- STRIPE_PRICE_ID exists:', hasPriceId);
+    console.log('- STRIPE_PUBLISHABLE_KEY exists:', hasPublishableKey);
     
     if (!hasSecretKey || !hasPriceId) {
       return NextResponse.json({
         success: false,
-        error: 'Missing environment variables',
-        hasSecretKey,
-        hasPriceId
+        error: 'Missing Stripe environment variables',
+        details: {
+          hasSecretKey,
+          hasPriceId,
+          hasPublishableKey
+        }
       });
     }
 
@@ -30,36 +35,71 @@ export async function GET() {
     
     console.log('✅ Stripe initialized');
 
-    // Test 1: Retrieve the price
-    const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
-    console.log('✅ Price retrieved:', price.id, price.active);
+    // Test 1: Check if API key is valid
+    console.log('Testing API key validity...');
+    const account = await stripe.accounts.retrieve();
+    console.log('✅ API key is valid for account:', account.id);
 
-    // Test 2: List products
+    // Test 2: Retrieve the price
+    console.log('Testing price retrieval...');
+    const price = await stripe.prices.retrieve(process.env.STRIPE_PRICE_ID);
+    console.log('✅ Price retrieved:', price.id, 'Active:', price.active);
+
+    // Test 3: List products
+    console.log('Testing product listing...');
     const products = await stripe.products.list({ limit: 3 });
     console.log('✅ Products listed:', products.data.length);
 
-    // Test 3: List customers (just to test API access)
-    const customers = await stripe.customers.list({ limit: 1 });
-    console.log('✅ Customers listed:', customers.data.length);
-
     return NextResponse.json({
       success: true,
-      message: 'Stripe API is working correctly',
-      tests: {
-        priceRetrieved: {
-          id: price.id,
-          active: price.active,
-          currency: price.currency,
-          amount: price.unit_amount
-        },
-        productsCount: products.data.length,
-        customersCount: customers.data.length,
-        apiKeyType: process.env.STRIPE_SECRET_KEY.startsWith('sk_live_') ? 'live' : 'test'
-      }
+      message: '🎉 Stripe API is working correctly!',
+      account: {
+        id: account.id,
+        country: account.country,
+        business_type: account.business_type
+      },
+      price: {
+        id: price.id,
+        active: price.active,
+        currency: price.currency,
+        amount: price.unit_amount,
+        interval: price.recurring?.interval
+      },
+      environment: {
+        hasSecretKey: true,
+        hasPriceId: true,
+        hasPublishableKey,
+        keyType: process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_') ? 'LIVE' : 'TEST'
+      },
+      productsCount: products.data.length
     });
 
   } catch (error) {
     console.error('❌ Stripe API test failed:', error);
+    
+    // Handle specific error types
+    if (error.type === 'StripeAuthenticationError') {
+      return NextResponse.json({
+        success: false,
+        error: '🔑 Authentication Error - Your Stripe API key is invalid or expired',
+        details: {
+          message: error.message,
+          solution: 'Please get a new API key from Stripe Dashboard'
+        }
+      }, { status: 401 });
+    }
+    
+    if (error.type === 'StripeInvalidRequestError') {
+      return NextResponse.json({
+        success: false,
+        error: '❌ Invalid Request - Check your Price ID or API configuration',
+        details: {
+          message: error.message,
+          code: error.code,
+          param: error.param
+        }
+      }, { status: 400 });
+    }
     
     return NextResponse.json({
       success: false,
