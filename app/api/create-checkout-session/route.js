@@ -113,9 +113,9 @@ export async function POST(request) {
     const origin = request.headers.get('origin') || 'https://www.valuation-pro.com';
     console.log('🌐 Using origin for redirects:', origin);
 
-    // 🔥 FIXED: Remove customer_email since we're using customer
+    // 🔥 FIXED: Address the tax calculation issue
     const checkoutSession = await stripe.checkout.sessions.create({
-      customer: customer.id, // ✅ Using customer ID
+      customer: customer.id,
       payment_method_types: ['card'],
       mode: 'subscription',
       line_items: [
@@ -140,13 +140,30 @@ export async function POST(request) {
       },
       // Add billing address collection
       billing_address_collection: 'required',
-      // 🔥 REMOVED: customer_email (this was causing the conflict!)
-      // Add automatic tax calculation if applicable
+      
+      // 🔥 FIXED: Handle automatic tax properly
+      customer_update: {
+        address: 'auto', // Automatically save address from checkout
+        shipping: 'auto'  // Automatically save shipping from checkout
+      },
+      
+      // 🔥 OPTION 1: Keep automatic tax but handle addresses properly
       automatic_tax: {
         enabled: true,
       },
+      
+      // 🔥 OPTION 2: If tax issues persist, disable automatic tax
+      // automatic_tax: {
+      //   enabled: false,
+      // },
+      
       // Allow promotion codes
       allow_promotion_codes: true,
+      
+      // Collect shipping address for tax calculation
+      shipping_address_collection: {
+        allowed_countries: ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'NO', 'DK', 'FI', 'IE', 'AT', 'BE', 'CH', 'HK', 'SG', 'JP'],
+      },
     });
 
     console.log('✅ Checkout session created successfully!');
@@ -197,6 +214,14 @@ export async function POST(request) {
         return NextResponse.json(
           { error: `Invalid price ID "${process.env.STRIPE_PRICE_ID}". Please check your Stripe dashboard.` }, 
           { status: 400 }
+        );
+      }
+      
+      // Handle tax-related errors specifically
+      if (error.message.includes('Automatic tax calculation')) {
+        return NextResponse.json(
+          { error: 'Tax configuration issue. Please try again or contact support.' }, 
+          { status: 500 }
         );
       }
       
