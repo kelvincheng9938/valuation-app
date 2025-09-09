@@ -1,4 +1,4 @@
-// middleware.js - SIMPLIFIED WORKING VERSION
+// middleware.js - FIXED: Check database BEFORE cookie limits
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
@@ -30,13 +30,45 @@ export async function middleware(req) {
     if (token?.email) {
       console.log(`[Middleware] Authenticated user: ${token.email}`);
       
-      // 🔥 DIRECT DEMO PRO CHECK - NO API CALLS
+      // 🔥 CHECK 1: DIRECT DEMO PRO CHECK
       if (DEMO_PRO_USERS.includes(token.email)) {
         console.log(`[Middleware] ✅ DEMO PRO USER - unlimited access: ${token.email}`);
         return response;
       }
       
-      // For non-demo users, check usage limits
+      // 🔥 CHECK 2: DATABASE SUBSCRIPTION CHECK (PRIORITY)
+      try {
+        const baseUrl = req.nextUrl.origin;
+        const checkUrl = `${baseUrl}/api/check-subscription`;
+        
+        const subscriptionResponse = await fetch(checkUrl, {
+          method: 'GET',
+          headers: {
+            'x-internal-request': 'true',
+            'x-user-email': token.email,
+            'cookie': req.headers.get('cookie') || ''
+          },
+        });
+        
+        if (subscriptionResponse.ok) {
+          const { isActive } = await subscriptionResponse.json();
+          
+          if (isActive) {
+            console.log(`[Middleware] ✅ DATABASE PRO USER - unlimited access: ${token.email}`);
+            return response; // UNLIMITED ACCESS - SKIP ALL COOKIE CHECKS
+          } else {
+            console.log(`[Middleware] ❌ Database check: ${token.email} is not Pro`);
+          }
+        } else {
+          console.error('[Middleware] Subscription API failed:', subscriptionResponse.status);
+        }
+      } catch (error) {
+        console.error('[Middleware] Subscription check failed:', error);
+      }
+      
+      // 🔥 CHECK 3: ONLY CHECK COOKIES IF NOT PRO USER
+      console.log(`[Middleware] Checking usage limits for non-Pro user: ${token.email}`);
+      
       const authUsageCookie = req.cookies.get('auth_usage');
       let authUsage = 0;
 
