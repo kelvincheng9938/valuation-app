@@ -1,3 +1,9 @@
+// app/report/page.js
+'use client'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+import ReportContent from '@/components/ReportContent'
+
 function LimitBanner({ isFirstTime, usageInfo }) {
   const { data: session } = useSession();
   const [isProUser, setIsProUser] = useState(false);
@@ -73,4 +79,9 @@ function LimitBanner({ isFirstTime, usageInfo }) {
   }
   
   return null;
+}
+
+// Main Report Page Component
+export default function ReportPage() {
+  return <ReportContent />
 }
