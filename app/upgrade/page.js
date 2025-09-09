@@ -127,7 +127,7 @@ export default function UpgradePage() {
               
               <h2 className="text-2xl font-bold text-white mb-2">Pro Plan</h2>
               <div className="text-5xl font-bold text-white mb-2">
-                $9.99
+                $9.98
                 <span className="text-xl text-gray-300">/month</span>
               </div>
               <p className="text-gray-300 mb-8">Cancel anytime. 7-day money-back guarantee.</p>
