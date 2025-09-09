@@ -199,7 +199,7 @@ export default function UpgradeSuccessPage() {
             <div className="space-y-4">
               <button
                 onClick={goToReports}
-                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-black font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105"
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105"
               >
                 📊 Start Analyzing Stocks Now!
               </button>
