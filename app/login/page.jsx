@@ -142,7 +142,7 @@ export default function LoginPage() {
                 • Unlimited stock analyses<br/>
                 • Priority customer support<br/>
                 • Advanced export features<br/>
-                • Only $9.99/month - <a href="/upgrade" className="underline hover:text-purple-200">Learn more</a>
+                • Only $9.98/month - <a href="/upgrade" className="underline hover:text-purple-200">Learn more</a>
               </div>
             </div>
           ) : (
