@@ -162,15 +162,18 @@ export default function UpgradeSuccessPage() {
 
             {/* Payment Details */}
             {sessionData && (
-              <div className="bg-green-500/10 border border-green-400/20 rounded-lg p-4 mb-8">
-                <div className="text-green-400 font-semibold mb-2">✅ Payment Confirmed</div>
-                <div className="text-sm text-green-300 space-y-1">
-                  <div>Account: {sessionData.customer_email}</div>
-                  <div>Amount: ${(sessionData.amount_total / 100).toFixed(2)} {sessionData.currency?.toUpperCase()}</div>
-                  <div>Status: <span className="font-semibold">Active & Unlimited</span></div>
-                </div>
-              </div>
-            )}
+  <div className="bg-green-500/10 border border-green-400/20 rounded-lg p-4 mb-8">
+    <div className="text-green-400 font-semibold mb-2">✅ Payment Confirmed</div>
+    <div className="text-sm text-green-300 space-y-1">
+      <div>Account: {sessionData.customer_email}</div>
+      <div>Amount: ${(sessionData.amount_total / 100).toFixed(2)} {sessionData.currency?.toUpperCase()}</div>
+      <div>Status: <span className="font-semibold">Active & Unlimited</span></div>
+      <div className="text-xs text-green-200 mt-2">
+        💡 Demo pricing - More features coming soon!
+      </div>
+    </div>
+  </div>
+)}
 
             {/* What's Included */}
             <div className="text-left mb-8">
