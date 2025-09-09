@@ -1,9 +1,6 @@
-// middleware.js
+// middleware.js - DATABASE VERSION
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-
-// Note: Middleware runs in Edge Runtime, so we can't use Node.js modules
-// We'll need to make a call to an API route to check subscription status
 
 export async function middleware(req) {
   console.log(`[Middleware] ${req.method} ${req.nextUrl.pathname}${req.nextUrl.search}`);
@@ -14,7 +11,6 @@ export async function middleware(req) {
   }
 
   try {
-    // Check authentication
     const token = await getToken({ 
       req, 
       secret: process.env.NEXTAUTH_SECRET 
@@ -29,17 +25,16 @@ export async function middleware(req) {
     if (token?.email) {
       console.log(`[Middleware] Authenticated user: ${token.email}`);
       
-      // 🔥 Check subscription via API endpoint (Edge Runtime compatible)
+      // 🔥 CHECK DATABASE SUBSCRIPTION via API
       try {
-        // Create internal URL for subscription check
         const baseUrl = req.nextUrl.origin;
-        const checkUrl = `${baseUrl}/api/check-subscription?email=${encodeURIComponent(token.email)}`;
+        const checkUrl = `${baseUrl}/api/check-subscription`;
         
-        // Make internal API call
         const subscriptionResponse = await fetch(checkUrl, {
           method: 'GET',
           headers: {
-            'x-internal-request': 'true', // Security header to identify internal requests
+            'x-internal-request': 'true',
+            'x-user-email': token.email,
           },
         });
         
@@ -47,18 +42,15 @@ export async function middleware(req) {
           const { isActive } = await subscriptionResponse.json();
           
           if (isActive) {
-            console.log(`[Middleware] ✅ Pro user detected - unlimited access: ${token.email}`);
+            console.log(`[Middleware] ✅ PRO USER (Database) - unlimited access: ${token.email}`);
             return response;
-          } else {
-            console.log(`[Middleware] ❌ No active subscription found for: ${token.email}`);
           }
         }
       } catch (error) {
-        console.error('[Middleware] Error checking subscription:', error);
-        // Continue with regular flow if subscription check fails
+        console.error('[Middleware] Subscription check failed:', error);
       }
 
-      // Check auth usage for free authenticated users (5 per month)
+      // Handle free authenticated users (5 per month)
       const authUsageCookie = req.cookies.get('auth_usage');
       let authUsage = 0;
 
@@ -73,18 +65,16 @@ export async function middleware(req) {
         }
       }
 
-      console.log(`[Middleware] Auth user usage: ${authUsage}/5`);
+      console.log(`[Middleware] Free user usage: ${authUsage}/5`);
 
-      // If trying to view a stock and exceeded limit
       if (hasTickerParam && authUsage >= 5) {
-        console.log(`[Middleware] Auth user exceeded limit - redirect to upgrade`);
+        console.log(`[Middleware] User exceeded limit - redirect to upgrade`);
         const upgradeUrl = new URL('/upgrade', req.url);
         upgradeUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
         upgradeUrl.searchParams.set('reason', 'monthly_limit');
         return NextResponse.redirect(upgradeUrl);
       }
 
-      // Increment usage if viewing a stock
       if (hasTickerParam && authUsage < 5) {
         const newUsageData = {
           month: currentMonth,
@@ -99,16 +89,15 @@ export async function middleware(req) {
           sameSite: 'lax'
         });
 
-        console.log(`[Middleware] Auth usage incremented to: ${newUsageData.count}`);
+        console.log(`[Middleware] Usage incremented to: ${newUsageData.count}`);
       }
 
       return response;
     }
 
-    // UNAUTHENTICATED USER FLOW  
+    // UNAUTHENTICATED USER FLOW (same as before)
     console.log(`[Middleware] Unauthenticated user`);
 
-    // Check free usage (2 views before login required)
     const freeUsageCookie = req.cookies.get('free_usage');
     let freeUsage = 0;
 
@@ -123,18 +112,13 @@ export async function middleware(req) {
       }
     }
 
-    console.log(`[Middleware] Free user usage: ${freeUsage}/2`);
-
-    // If trying to view a stock and exceeded free limit
     if (hasTickerParam && freeUsage >= 2) {
-      console.log(`[Middleware] Free user exceeded limit - redirect to login`);
       const loginUrl = new URL('/login', req.url);
       loginUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
       loginUrl.searchParams.set('reason', 'free_limit');
       return NextResponse.redirect(loginUrl);
     }
 
-    // Increment free usage if viewing a stock
     if (hasTickerParam && freeUsage < 2) {
       const newUsageData = {
         month: currentMonth,
@@ -148,8 +132,6 @@ export async function middleware(req) {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax'
       });
-
-      console.log(`[Middleware] Free usage incremented to: ${newUsageData.count}`);
     }
 
     return response;
