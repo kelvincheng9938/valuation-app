@@ -1,6 +1,11 @@
-// middleware.js - DATABASE VERSION
+// middleware.js - SIMPLIFIED WORKING VERSION
 import { NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
+
+// Direct demo pro users check
+const DEMO_PRO_USERS = [
+  'kelvincheng9938@gmail.com',
+];
 
 export async function middleware(req) {
   console.log(`[Middleware] ${req.method} ${req.nextUrl.pathname}${req.nextUrl.search}`);
@@ -25,32 +30,13 @@ export async function middleware(req) {
     if (token?.email) {
       console.log(`[Middleware] Authenticated user: ${token.email}`);
       
-      // 🔥 CHECK DATABASE SUBSCRIPTION via API
-      try {
-        const baseUrl = req.nextUrl.origin;
-        const checkUrl = `${baseUrl}/api/check-subscription`;
-        
-        const subscriptionResponse = await fetch(checkUrl, {
-          method: 'GET',
-          headers: {
-            'x-internal-request': 'true',
-            'x-user-email': token.email,
-          },
-        });
-        
-        if (subscriptionResponse.ok) {
-          const { isActive } = await subscriptionResponse.json();
-          
-          if (isActive) {
-            console.log(`[Middleware] ✅ PRO USER (Database) - unlimited access: ${token.email}`);
-            return response;
-          }
-        }
-      } catch (error) {
-        console.error('[Middleware] Subscription check failed:', error);
+      // 🔥 DIRECT DEMO PRO CHECK - NO API CALLS
+      if (DEMO_PRO_USERS.includes(token.email)) {
+        console.log(`[Middleware] ✅ DEMO PRO USER - unlimited access: ${token.email}`);
+        return response;
       }
-
-      // Handle free authenticated users (5 per month)
+      
+      // For non-demo users, check usage limits
       const authUsageCookie = req.cookies.get('auth_usage');
       let authUsage = 0;
 
@@ -65,10 +51,10 @@ export async function middleware(req) {
         }
       }
 
-      console.log(`[Middleware] Free user usage: ${authUsage}/5`);
+      console.log(`[Middleware] Auth user usage: ${authUsage}/5`);
 
       if (hasTickerParam && authUsage >= 5) {
-        console.log(`[Middleware] User exceeded limit - redirect to upgrade`);
+        console.log(`[Middleware] Auth user exceeded limit - redirect to upgrade`);
         const upgradeUrl = new URL('/upgrade', req.url);
         upgradeUrl.searchParams.set('from', req.nextUrl.pathname + req.nextUrl.search);
         upgradeUrl.searchParams.set('reason', 'monthly_limit');
@@ -95,7 +81,7 @@ export async function middleware(req) {
       return response;
     }
 
-    // UNAUTHENTICATED USER FLOW (same as before)
+    // UNAUTHENTICATED USER FLOW
     console.log(`[Middleware] Unauthenticated user`);
 
     const freeUsageCookie = req.cookies.get('free_usage');
