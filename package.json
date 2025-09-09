@@ -1,4 +1,4 @@
-{
+package.json{
   "name": "valuation-app",
   "version": "1.0.0",
   "private": true,
@@ -16,7 +16,8 @@
     "axios": "1.6.2",
     "dayjs": "1.11.10",
     "next-auth": "4.24.7",
-    "stripe": "^14.21.0"
+    "stripe": "^14.21.0",
+    "@vercel/kv": "^1.0.1"
   },
   "devDependencies": {
     "tailwindcss": "3.3.6",
