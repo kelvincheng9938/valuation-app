@@ -1,12 +1,46 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import ReportContent from '@/components/ReportContent';
-
 function LimitBanner({ isFirstTime, usageInfo }) {
   const { data: session } = useSession();
-  
+  const [isProUser, setIsProUser] = useState(false);
+  const [checkingPro, setCheckingPro] = useState(false);
+
+  // Check Pro status when user is authenticated
+  useEffect(() => {
+    if (session?.user?.email && !checkingPro) {
+      setCheckingPro(true);
+      fetch('/api/check-subscription')
+        .then(res => res.json())
+        .then(data => {
+          setIsProUser(data.isActive || false);
+          console.log(`🔍 Pro status check: ${data.isActive}`);
+        })
+        .catch(error => {
+          console.error('Error checking Pro status:', error);
+          setIsProUser(false);
+        })
+        .finally(() => setCheckingPro(false));
+    }
+  }, [session?.user?.email, checkingPro]);
+
+  // 🎯 PRO USER BANNER
+  if (session && isProUser) {
+    return (
+      <div className="mb-4 p-3 rounded-lg border border-purple-400/30 bg-purple-500/10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-purple-400 font-semibold">👑 ValuationPro Pro</div>
+            <div className="text-xs bg-purple-400/20 text-purple-300 px-2 py-1 rounded-full">
+              Unlimited Access
+            </div>
+          </div>
+          <div className="text-xs text-purple-300">
+            Signed in as {session.user.name?.split(' ')[0] || 'Pro User'}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🆓 FIRST TIME VISITOR (NO LOGIN)
   if (isFirstTime && !session) {
     return (
       <div className="mb-4 p-4 rounded-lg border border-blue-400/30 bg-blue-500/10">
@@ -23,7 +57,8 @@ function LimitBanner({ isFirstTime, usageInfo }) {
     );
   }
 
-  if (session && usageInfo?.authUsed < 5) {
+  // 🔐 AUTHENTICATED FREE USER
+  if (session && !isProUser && usageInfo?.authUsed < 5) {
     return (
       <div className="mb-4 p-4 rounded-lg border border-green-400/30 bg-green-500/10">
         <div className="text-green-400 font-semibold mb-2">👋 Welcome back, {session.user.name}!</div>
@@ -38,95 +73,4 @@ function LimitBanner({ isFirstTime, usageInfo }) {
   }
   
   return null;
-}
-
-function LoadingState() {
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="card p-8 text-center">
-        <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <div className="text-lg">Loading...</div>
-      </div>
-    </div>
-  );
-}
-
-function getUsageInfo() {
-  if (typeof window === 'undefined') return { freeUsed: 0, authUsed: 0 };
-
-  const now = new Date();
-  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  
-  // Check free usage
-  let freeUsed = 0;
-  const freeUsageCookie = document.cookie
-    .split(';')
-    .find(cookie => cookie.trim().startsWith('free_usage='));
-  
-  if (freeUsageCookie) {
-    try {
-      const freeUsageData = JSON.parse(decodeURIComponent(freeUsageCookie.split('=')[1]));
-      if (freeUsageData.month === currentMonth) {
-        freeUsed = freeUsageData.count || 0;
-      }
-    } catch (e) {
-      freeUsed = 0;
-    }
-  }
-
-  // Check auth usage
-  let authUsed = 0;
-  const authUsageCookie = document.cookie
-    .split(';')
-    .find(cookie => cookie.trim().startsWith('auth_usage='));
-  
-  if (authUsageCookie) {
-    try {
-      const authUsageData = JSON.parse(decodeURIComponent(authUsageCookie.split('=')[1]));
-      if (authUsageData.month === currentMonth) {
-        authUsed = authUsageData.count || 0;
-      }
-    } catch (e) {
-      authUsed = 0;
-    }
-  }
-
-  return { freeUsed, authUsed };
-}
-
-export default function ReportPage() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [loading, setLoading] = useState(true);
-  const [usageInfo, setUsageInfo] = useState({ freeUsed: 0, authUsed: 0 });
-
-  const urlTicker = searchParams.get('ticker');
-
-  useEffect(() => {
-    if (status !== 'loading') {
-      setUsageInfo(getUsageInfo());
-      setLoading(false);
-    }
-  }, [status]);
-
-  // Update usage info when ticker changes
-  useEffect(() => {
-    if (!loading) {
-      setUsageInfo(getUsageInfo());
-    }
-  }, [urlTicker, loading]);
-
-  if (loading || status === 'loading') {
-    return <LoadingState />;
-  }
-
-  const isFirstView = !urlTicker && (!session ? usageInfo.freeUsed === 0 : usageInfo.authUsed === 0);
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-6">
-      <LimitBanner isFirstTime={isFirstView} usageInfo={usageInfo} />
-      <ReportContent />
-    </div>
-  );
 }
