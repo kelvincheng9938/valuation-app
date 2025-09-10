@@ -1,4 +1,4 @@
-// app/admin-dashboard/page.js - Complete Business Dashboard
+// app/admin-dashboard/page.js - Complete Business Dashboard with Next Payment Date
 import { getAllSubscriptions } from '@/lib/subscription'
 
 async function getStripeStats() {
@@ -8,6 +8,21 @@ async function getStripeStats() {
     totalRevenue: 0,
     monthlyRevenue: 0,
     totalCustomers: 0
+  }
+}
+
+function getNextPaymentDate(subscription) {
+  if (!subscription.currentPeriodEnd) return 'N/A'
+  
+  try {
+    const endDate = new Date(subscription.currentPeriodEnd)
+    return endDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    })
+  } catch (error) {
+    return 'N/A'
   }
 }
 
@@ -58,25 +73,43 @@ export default async function AdminDashboard() {
                     <th className="text-left py-2">Status</th>
                     <th className="text-left py-2">Plan</th>
                     <th className="text-left py-2">Started</th>
+                    <th className="text-left py-2">Next Payment Date</th>
                     <th className="text-left py-2">Source</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {activeSubscriptions.map((sub, index) => (
-                    <tr key={index} className="border-b border-gray-700">
-                      <td className="py-2 font-mono text-sm">{sub.email}</td>
-                      <td className="py-2">
-                        <span className="bg-green-500 text-white px-2 py-1 rounded text-xs">
-                          {sub.status}
-                        </span>
-                      </td>
-                      <td className="py-2">Pro ($9.98/mo)</td>
-                      <td className="py-2 text-sm text-gray-400">
-                        {new Date(sub.currentPeriodStart).toLocaleDateString()}
-                      </td>
-                      <td className="py-2 text-sm text-gray-400">{sub.source}</td>
-                    </tr>
-                  ))}
+                  {activeSubscriptions.map((sub, index) => {
+                    const nextPayment = getNextPaymentDate(sub)
+                    const isUpcoming = () => {
+                      if (!sub.currentPeriodEnd) return false
+                      const endDate = new Date(sub.currentPeriodEnd)
+                      const today = new Date()
+                      const daysUntil = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24))
+                      return daysUntil <= 7 && daysUntil >= 0
+                    }
+                    
+                    return (
+                      <tr key={index} className="border-b border-gray-700">
+                        <td className="py-2 font-mono text-sm">{sub.email}</td>
+                        <td className="py-2">
+                          <span className="bg-green-500 text-white px-2 py-1 rounded text-xs">
+                            {sub.status}
+                          </span>
+                        </td>
+                        <td className="py-2">Pro ($9.98/mo)</td>
+                        <td className="py-2 text-sm text-gray-400">
+                          {new Date(sub.currentPeriodStart).toLocaleDateString()}
+                        </td>
+                        <td className="py-2 text-sm">
+                          <span className={`${isUpcoming() ? 'text-yellow-400 font-semibold' : 'text-gray-400'}`}>
+                            {nextPayment}
+                            {isUpcoming() && <span className="ml-1">⚠️</span>}
+                          </span>
+                        </td>
+                        <td className="py-2 text-sm text-gray-400">{sub.source}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -105,6 +138,18 @@ export default async function AdminDashboard() {
             <div>Demo Users: {subscriptionData.demoUsers.length}</div>
             <div>Last Updated: {new Date().toLocaleString()}</div>
           </div>
+        </div>
+
+        {/* Payment Schedule Note */}
+        <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 mt-6">
+          <h3 className="text-lg font-semibold text-blue-400 mb-2">💳 Stripe Automatic Billing</h3>
+          <p className="text-sm text-blue-200">
+            Yes, Stripe will automatically charge subscribers on their next payment date. 
+            All active subscribers will be billed $9.98 on their billing anniversary (30 days after signup).
+          </p>
+          <p className="text-sm text-blue-200 mt-2">
+            ⚠️ Yellow highlighted dates indicate payments due within 7 days.
+          </p>
         </div>
       </div>
     </div>
