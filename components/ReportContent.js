@@ -1,4 +1,4 @@
-// components/ReportContent.js - FIXED: Clean scrollable stock list interface
+// components/ReportContent.js - COMPLETE: Clean scrollable stock list + all report sections
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -17,11 +17,11 @@ export default function ReportContent() {
   const [error, setError] = useState(null)
   const [updateKey, setUpdateKey] = useState(0)
   const [activeSection, setActiveSection] = useState('overview')
-  const [showStockList, setShowStockList] = useState(false) // 🔥 NEW: Toggle for stock list
+  const [showStockList, setShowStockList] = useState(false)
   const [availableTickers, setAvailableTickers] = useState([])
   const [tickersLoading, setTickersLoading] = useState(true)
-  const [filteredTickers, setFilteredTickers] = useState([]) // 🔥 NEW: For search filtering
-  const [searchFilter, setSearchFilter] = useState('') // 🔥 NEW: Search within stock list
+  const [filteredTickers, setFilteredTickers] = useState([])
+  const [searchFilter, setSearchFilter] = useState('')
   const { theme } = useTheme()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -41,7 +41,7 @@ export default function ReportContent() {
       
       const tickers = await getAvailableTickers()
       setAvailableTickers(tickers)
-      setFilteredTickers(tickers) // Initially show all
+      setFilteredTickers(tickers)
       
       console.log(`✅ Loaded ${tickers.length} available tickers`)
     } catch (error) {
@@ -53,7 +53,7 @@ export default function ReportContent() {
     }
   }
 
-  // 🔥 NEW: Filter tickers based on search
+  // Filter tickers based on search
   useEffect(() => {
     if (!searchFilter.trim()) {
       setFilteredTickers(availableTickers)
@@ -147,13 +147,13 @@ export default function ReportContent() {
     const searchTicker = inputTicker.trim().toUpperCase()
     router.push(`/report?ticker=${searchTicker}`)
     setInputTicker('')
-    setShowStockList(false) // Close stock list after search
+    setShowStockList(false)
   }
 
   const handleStockClick = (tickerSymbol) => {
     console.log('[ReportContent] Stock clicked:', tickerSymbol)
     router.push(`/report?ticker=${tickerSymbol}`)
-    setShowStockList(false) // Close stock list after selection
+    setShowStockList(false)
   }
 
   const scrollToSection = (sectionId) => {
@@ -297,7 +297,7 @@ export default function ReportContent() {
             </div>
           )}
 
-          {/* 🔥 CLEAN SEARCH INTERFACE */}
+          {/* Clean Search Interface */}
           <div className="mb-4">
             <div className="card p-3">
               {/* Search Input */}
@@ -321,7 +321,7 @@ export default function ReportContent() {
                 </form>
               </div>
 
-              {/* 🔥 STOCK LIST TOGGLE BUTTON */}
+              {/* Stock List Toggle */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Browse Stocks</span>
                 <button
@@ -333,7 +333,7 @@ export default function ReportContent() {
                 </button>
               </div>
 
-              {/* 🔥 SCROLLABLE STOCK LIST */}
+              {/* Scrollable Stock List */}
               {showStockList && (
                 <div className="mt-3 border-t border-white/10 pt-3">
                   {/* Search Filter */}
@@ -373,11 +373,9 @@ export default function ReportContent() {
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 <span className="font-medium text-sm">{tickerSymbol}</span>
-                                {/* Add HK indicator for Hong Kong stocks */}
                                 {['700', '3690', '1810', '9988'].includes(tickerSymbol) && (
                                   <span className="text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">🇭🇰</span>
                                 )}
-                                {/* Show current selection */}
                                 {ticker === tickerSymbol && (
                                   <span className="text-xs bg-cyan-400/20 text-cyan-400 px-1.5 py-0.5 rounded">Current</span>
                                 )}
@@ -400,7 +398,7 @@ export default function ReportContent() {
                 </div>
               )}
 
-              {/* Compact Data Quality */}
+              {/* Data Quality */}
               {stockData?.dataQuality && (
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -554,47 +552,6 @@ export default function ReportContent() {
                       <div className="text-sm ghost">{valuationInfo.status}</div>
                     </div>
                   </div>
-
-                  {/* Company Description */}
-                  <div>
-                    <h3 className="font-semibold mb-3">About the Company</h3>
-                    <p className="leading-relaxed mb-6">
-                      {stockData?.description || 'Loading company information...'}
-                    </p>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="chip px-3 py-2">
-                        <div className="text-xs ghost">Market Cap</div>
-                        <div className="font-semibold">{stockData?.marketCap || 'N/A'}</div>
-                      </div>
-                      <div className="chip px-3 py-2">
-                        <div className="text-xs ghost">Forward P/E</div>
-                        <div className="font-semibold">{stockData?.forwardPE || 'N/A'}</div>
-                      </div>
-                      <div className="chip px-3 py-2">
-                        <div className="text-xs ghost">TTM P/E</div>
-                        <div className="font-semibold">{stockData?.ttmPE || 'N/A'}</div>
-                      </div>
-                      <div className="chip px-3 py-2">
-                        <div className="text-xs ghost">Sector</div>
-                        <div className="font-semibold">{stockData?.sector || 'Technology'}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Continue with all other sections... */}
-              {/* [Rest of the sections remain the same as before] */}
-
-            </main>
-          </div>
-
-        </div>
-      </ErrorBoundary>
-    </>
-  )
-}
 
                   {/* Company Description */}
                   <div>
