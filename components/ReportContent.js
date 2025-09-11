@@ -936,7 +936,7 @@ export default function ReportContent() {
                 <div className="text-center">
                   <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
                   <div className="text-sm ghost mb-4">
-                    This demo showcases institutional-grade stock analysis with {availableTickers.length || '115+'} stocks including Hong Kong listings. 
+                    This demo showcases institutional-grade stock analysis with {availableTickers.length || '115'} stocks including Hong Kong listings. 
                     When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
                   </div>
                   <div className="flex flex-wrap justify-center gap-2 text-xs">
