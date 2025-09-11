@@ -1,4 +1,4 @@
-// components/ReportContent.js - FIXED: Proper async ticker loading for overlay support
+// components/ReportContent.js - FIXED: Ultra compact search + proper stock count
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -19,7 +19,7 @@ export default function ReportContent() {
   const [activeSection, setActiveSection] = useState('overview')
   const [showAllCategories, setShowAllCategories] = useState(false)
   const [availableTickers, setAvailableTickers] = useState([])
-  const [tickersLoading, setTickersLoading] = useState(true) // 🔥 NEW: Track ticker loading state
+  const [tickersLoading, setTickersLoading] = useState(true)
   const { theme } = useTheme()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -27,7 +27,7 @@ export default function ReportContent() {
   // Get stock categories (static)
   const stockCategories = getStockCategories()
 
-  // 🔥 FIXED: Load available tickers (including overlay) on mount
+  // Load available tickers (including overlay) on mount
   useEffect(() => {
     loadAvailableTickers()
   }, [])
@@ -43,7 +43,6 @@ export default function ReportContent() {
       console.log(`✅ Loaded ${tickers.length} available tickers:`, tickers.slice(0, 10))
     } catch (error) {
       console.error('❌ Error loading available tickers:', error)
-      // Fallback to empty array
       setAvailableTickers([])
     } finally {
       setTickersLoading(false)
@@ -125,40 +124,17 @@ export default function ReportContent() {
     setLoading(false)
   }
 
-  // 🔥 FIXED: Better search validation using loaded tickers
   const handleSearch = async (e) => {
     e.preventDefault()
     if (!inputTicker.trim()) return
 
     const searchTicker = inputTicker.trim().toUpperCase()
-    
-    // Show loading if tickers are still loading
-    if (tickersLoading) {
-      console.log('⏳ Tickers still loading, proceeding with search...')
-      router.push(`/report?ticker=${searchTicker}`)
-      setInputTicker('')
-      return
-    }
-
-    // Check if ticker is available (if we have the list loaded)
-    if (availableTickers.length > 0 && !availableTickers.includes(searchTicker)) {
-      console.log(`❌ Ticker ${searchTicker} not found in available tickers`)
-      console.log('📋 Available tickers:', availableTickers.slice(0, 20))
-      
-      // Still try to load it (in case overlay is updated)
-      router.push(`/report?ticker=${searchTicker}`)
-      setInputTicker('')
-      return
-    }
-
-    // Navigate to trigger middleware check
     router.push(`/report?ticker=${searchTicker}`)
     setInputTicker('')
   }
 
   const handleStockClick = (tickerSymbol) => {
     console.log('[ReportContent] Stock clicked:', tickerSymbol)
-    // Navigate to trigger middleware check
     router.push(`/report?ticker=${tickerSymbol}`)
   }
 
@@ -303,115 +279,110 @@ export default function ReportContent() {
             </div>
           )}
 
-          {/* COMPACT SEARCH INTERFACE */}
-          <div className="mb-6">
-            <div className="card p-4">
-              {/* Search Input - Show loading state */}
-              <div className="mb-4">
-                <form onSubmit={handleSearch} className="flex gap-2 max-w-md">
+          {/* 🔥 ULTRA COMPACT SEARCH INTERFACE - 70% smaller */}
+          <div className="mb-4">
+            <div className="card p-2">
+              {/* Tiny Search Input */}
+              <div className="mb-2">
+                <form onSubmit={handleSearch} className="flex gap-1.5 max-w-sm">
                   <input
                     type="text"
                     value={inputTicker}
                     onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                    placeholder={tickersLoading ? "Loading tickers..." : "Enter ticker (e.g., AAPL, 700, MU)"}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 text-base"
+                    placeholder={tickersLoading ? "Loading..." : "Enter ticker (AAPL, 700, MU)"}
+                    className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
                     disabled={tickersLoading}
                   />
                   <button 
                     type="submit" 
-                    className="btn-primary px-4 py-2 rounded-lg text-base font-medium"
+                    className="btn-primary px-3 py-1 rounded text-sm font-medium"
                     disabled={loading || tickersLoading}
                   >
-                    {tickersLoading ? 'Loading...' : 'Analyze'}
+                    {tickersLoading ? '...' : 'Analyze'}
                   </button>
                 </form>
               </div>
 
-              {/* COMPACT STOCK CATEGORIES */}
-              <div className="space-y-3">
+              {/* Minimal Categories */}
+              <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold">Browse by Category</h3>
+                  <span className="text-sm font-medium">Browse by Category</span>
                   <button
                     onClick={() => setShowAllCategories(!showAllCategories)}
-                    className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+                    className="text-cyan-400 hover:text-cyan-300 text-xs"
                   >
-                    {showAllCategories ? 'Show Less' : 'Show All'} ({tickersLoading ? '...' : availableTickers.length} stocks)
+                    {showAllCategories ? 'Less' : 'All'} ({tickersLoading ? '...' : availableTickers.length})
                   </button>
                 </div>
 
-                {/* Show loading state for categories */}
                 {tickersLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-                      <div className="text-sm ghost">Loading stock database with overlay data...</div>
+                  <div className="flex items-center justify-center py-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-3 h-3 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs ghost">Loading...</span>
                     </div>
                   </div>
                 ) : (
                   <>
                     {Object.entries(stockCategories).map(([categoryKey, category]) => (
                       <div key={categoryKey} className={`transition-all duration-300 ${showAllCategories ? 'block' : categoryKey === 'HK_STOCKS' || category.tickers.includes(ticker) ? 'block' : 'hidden'}`}>
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-1 mb-1">
                           <div 
-                            className="w-3 h-3 rounded-full"
+                            className="w-2 h-2 rounded-full"
                             style={{ backgroundColor: category.color }}
                           ></div>
-                          <h4 className="font-medium text-sm" style={{ color: category.color }}>
+                          <span className="font-medium text-xs" style={{ color: category.color }}>
                             {category.label}
                             {categoryKey === 'HK_STOCKS' && (
-                              <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded">🇭🇰 Hong Kong</span>
+                              <span className="ml-1 text-xs bg-orange-500/20 text-orange-400 px-1 rounded">🇭🇰</span>
                             )}
-                          </h4>
+                          </span>
                           <span className="text-xs ghost">({category.tickers.length})</span>
                         </div>
                         
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-0.5">
                           {category.tickers.map(tickerSymbol => (
                             <button
                               key={tickerSymbol}
                               onClick={() => handleStockClick(tickerSymbol)}
-                              className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                              className={`px-1.5 py-0.5 rounded text-xs font-medium transition-all duration-200 ${
                                 ticker === tickerSymbol
-                                  ? 'text-white shadow-lg transform scale-105' 
-                                  : 'text-white/80 hover:text-white hover:transform hover:scale-105'
+                                  ? 'text-white shadow-sm transform scale-105' 
+                                  : 'text-white/80 hover:text-white'
                               }`}
                               style={{ 
                                 backgroundColor: ticker === tickerSymbol 
                                   ? category.color 
                                   : category.color + '80',
                                 boxShadow: ticker === tickerSymbol 
-                                  ? `0 4px 15px ${category.color}40` 
+                                  ? `0 2px 6px ${category.color}40` 
                                   : 'none'
                               }}
                             >
                               {tickerSymbol}
-                              {categoryKey === 'HK_STOCKS' && (
-                                <span className="ml-1 text-xs opacity-75">.HK</span>
-                              )}
                             </button>
                           ))}
                         </div>
                       </div>
                     ))}
 
-                    {/* Popular Selections */}
-                    <div className="pt-3 border-t border-white/10">
-                      <h4 className="font-medium mb-2 text-purple-400 text-sm">🔥 Popular Analysis</h4>
-                      <div className="flex flex-wrap gap-1.5">
+                    {/* Tiny Popular Section */}
+                    <div className="pt-1.5 border-t border-white/10">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-purple-400 text-xs font-medium">🔥 Popular</span>
+                      </div>
+                      <div className="flex flex-wrap gap-0.5">
                         {['AAPL', 'NVDA', 'MSFT', 'GOOGL', 'META', '700', 'TSLA', 'LLY'].map(popularTicker => (
                           <button
                             key={popularTicker}
                             onClick={() => handleStockClick(popularTicker)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                            className={`px-1.5 py-0.5 rounded-full text-xs font-medium transition-all duration-200 ${
                               ticker === popularTicker
-                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                                : 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30 hover:text-purple-300'
+                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm'
+                                : 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30'
                             }`}
                           >
                             {popularTicker}
-                            {['700', '3690', '1810', '9988'].includes(popularTicker) && (
-                              <span className="ml-1 text-xs opacity-75">🇭🇰</span>
-                            )}
                           </button>
                         ))}
                       </div>
@@ -420,19 +391,14 @@ export default function ReportContent() {
                 )}
               </div>
 
-              {/* Data Quality Indicators */}
+              {/* Tiny Data Quality */}
               {stockData?.dataQuality && (
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="ghost">Data sources:</span>
+                <div className="mt-1.5 pt-1.5 border-t border-white/10">
+                  <div className="flex flex-wrap items-center gap-1 text-xs">
+                    <span className="ghost text-xs">Sources:</span>
                     {getDataQualityBadge(stockData.dataQuality.estimates, 'EPS')}
-                    {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E Bands')}
+                    {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E')}
                     {getDataQualityBadge(stockData.dataQuality.peers, 'Peers')}
-                    {isDemoMode && (
-                      <span className="chip px-2 py-1 text-purple-400 text-xs">
-                        ✨ Bloomberg Terminal
-                      </span>
-                    )}
                   </div>
                 </div>
               )}
