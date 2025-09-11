@@ -1,350 +1,377 @@
-{/* Continue with all other sections... */}
-              
-              {/* 2. Valuation Analysis */}
-              <section id="valuation" className="scroll-mt-24">
-                <ErrorBoundary fallback="Valuation section failed to load">
-                  <div className="card p-6">
-                    <h2 className="text-2xl font-bold mb-6">Valuation Analysis</h2>
-                    
-                    {stockData?.eps?.values?.length > 0 && stockData?.peBands ? (
-                      <>
-                        <div className="flex items-center gap-3 mb-4 flex-wrap">
-                          <span className="chip px-3 py-2">
-                            EPS: {stockData.eps.values.join(' / ')}
-                          </span>
-                          <span className="chip px-3 py-2">
-                            P/E Bands: {stockData.peBands.low}× / {stockData.peBands.mid}× / {stockData.peBands.high}×
-                          </span>
-                          <span className="chip px-3 py-2">
-                            Current Price: ${stockData?.price?.toFixed(2) || '0.00'}
-                          </span>
-                          {stockData?.dataQuality?.warning && (
-                            <span className="chip px-3 py-2 text-yellow-400">
-                              ⚠️ {stockData.dataQuality.warning.split(' - ')[0]}
-                            </span>
-                          )}
-                        </div>
-                        <div id="valuationChart" className="chart-lg"></div>
-                      </>
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="text-yellow-400 text-4xl mb-4">📊</div>
-                        <div className="text-xl font-medium mb-3">Valuation Analysis Unavailable</div>
-                        <div className="text-ghost">
-                          {isDemoMode 
-                            ? 'This ticker may have incomplete EPS data. Try AAPL, MSFT, GOOGL, or META for full analysis.'
-                            : 'No forward EPS estimates available from analysts.'}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ErrorBoundary>
-              </section>
+// lib/api.js - FIXED: Handle overlay-only tickers like MU
+// Switch between demo and live data modes + daily CSV overlay
 
-              {/* 3. Quality Analysis */}
-              <section id="quality" className="scroll-mt-24">
-                <ErrorBoundary fallback="Quality analysis section failed to load">
-                  <div className="card p-6">
-                    <h2 className="text-2xl font-bold mb-6">Quality Analysis</h2>
-                    <div className="grid lg:grid-cols-2 gap-8">
-                      <div>
-                        <h3 className="font-semibold mb-4">Quality Radar</h3>
-                        <div id="qualityRadar" className="chart"></div>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold mb-4">Score Breakdown</h3>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Value Score</span>
-                            <div className="flex items-center gap-3 w-32">
-                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-orange-400 rounded-full transition-all duration-300" 
-                                  style={{width: `${(stockData?.scores?.value || 0) * 10}%`}}
-                                ></div>
-                              </div>
-                              <span className="text-sm font-bold w-8">{stockData?.scores?.value?.toFixed(1) || '0.0'}</span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Growth Score</span>
-                            <div className="flex items-center gap-3 w-32">
-                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-blue-400 rounded-full transition-all duration-300" 
-                                  style={{width: `${(stockData?.scores?.growth || 0) * 10}%`}}
-                                ></div>
-                              </div>
-                              <span className="text-sm font-bold w-8">{stockData?.scores?.growth?.toFixed(1) || '0.0'}</span>
-                            </div>
-                          </div>
+import { getDemoStockData, getDemoTickers, getDemoMarketData, DEMO_STOCK_DATA } from './demoData'
+import { getOverlayUrl, fetchCsvText, parseCsvToObjects, indexByTicker, applyOverlay } from './sheetOverlay'
 
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Profit Score</span>
-                            <div className="flex items-center gap-3 w-32">
-                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-green-400 rounded-full transition-all duration-300" 
-                                  style={{width: `${(stockData?.scores?.profit || 0) * 10}%`}}
-                                ></div>
-                              </div>
-                              <span className="text-sm font-bold w-8">{stockData?.scores?.profit?.toFixed(1) || '0.0'}</span>
-                            </div>
-                          </div>
+// Configuration - set to true for demo mode, false for live APIs
+const DEMO_MODE = true
 
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm">Momentum Score</span>
-                            <div className="flex items-center gap-3 w-32">
-                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
-                                <div 
-                                  className="h-full bg-purple-400 rounded-full transition-all duration-300" 
-                                  style={{width: `${(stockData?.scores?.momentum || 0) * 10}%`}}
-                                ></div>
-                              </div>
-                              <span className="text-sm font-bold w-8">{stockData?.scores?.momentum?.toFixed(1) || '0.0'}</span>
-                            </div>
-                          </div>
-                        </div>
+// 🔥 FIXED: Enhanced data loading with proper overlay-only ticker support
+export async function fetchStockData(ticker) {
+  try {
+    console.log(`Fetching data for ${ticker} - Demo Mode: ${DEMO_MODE}`)
+    
+    let baseData = null
+    let isOverlayOnly = false
 
-                        {isDemoMode && (
-                          <div className="mt-6 p-3 bg-blue-500/10 rounded-lg border border-blue-400/20">
-                            <div className="text-xs text-blue-300/70">
-                              💡 Quality scores are calculated using fundamental metrics including valuation, growth trajectory, profitability, and momentum indicators.
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </ErrorBoundary>
-              </section>
+    if (DEMO_MODE) {
+      // Try to get demo data first
+      const demoData = getDemoStockData(ticker)
+      if (demoData) {
+        baseData = demoData
+        console.log(`✅ Found base demo data for ${ticker}`)
+      } else {
+        // 🔥 NEW: Create minimal base data for overlay-only tickers
+        console.log(`⚠️ No base demo data for ${ticker}, will check overlay...`)
+        isOverlayOnly = true
+        baseData = createMinimalStockData(ticker)
+      }
+    } else {
+      baseData = await fetchLiveStockData(ticker)
+    }
 
-              {/* 4. Peer Comparison */}
-              <section id="peers" className="scroll-mt-24">
-                <ErrorBoundary fallback="Peer comparison section failed to load">
-                  <div className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold">Peer Comparison</h2>
-                      <div className="flex items-center gap-3">
-                        {isDemoMode && (
-                          <span className="chip px-2 py-1 text-blue-400 text-xs">
-                            📊 Demo Peers
-                          </span>
-                        )}
-                        <button id="toggleLabelsBtn" className="btn text-xs px-3 py-1">Labels: ON</button>
-                      </div>
-                    </div>
-                    
-                    {stockData?.peers?.length > 0 ? (
-                      <>
-                        <div className="mb-4">
-                          <p className="text-sm ghost">
-                            Forward P/E vs Market Cap comparison with sector peers. 
-                            Bubble size represents relative market influence.
-                          </p>
-                        </div>
-                        <div id="peersChart" className="chart"></div>
-                      </>
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="text-yellow-400 text-4xl mb-4">🏢</div>
-                        <div className="text-xl font-medium mb-3">Peer Data Unavailable</div>
-                        <div className="text-ghost">
-                          {isDemoMode 
-                            ? 'Peer comparison data not available for this ticker. Try major stocks like AAPL, MSFT, or GOOGL.'
-                            : 'No peer comparison data available for this ticker'}
-                        </div>
-                      </div>
-                    )}
+    // 🔥 CRITICAL: Always try overlay, especially for overlay-only tickers
+    try {
+      const overlayUrl = getOverlayUrl()
+      if (overlayUrl) {
+        console.log('🔄 Applying Google Sheet overlay...')
+        
+        const csvText = await fetchCsvText(overlayUrl)
+        if (csvText) {
+          const rows = parseCsvToObjects(csvText)
+          const overlayMap = indexByTicker(rows)
+          
+          // Check if ticker exists in overlay
+          const hasOverlayData = overlayMap.has(ticker.toUpperCase())
+          console.log(`🔍 Ticker ${ticker} in overlay: ${hasOverlayData}`)
+          
+          if (hasOverlayData) {
+            // Apply overlay to single stock
+            const overlayedData = applyOverlay([baseData], overlayMap)
+            if (overlayedData && overlayedData.length > 0) {
+              console.log(`✅ Google Sheet overlay applied successfully for ${ticker}`)
+              return overlayedData[0]
+            }
+          } else if (isOverlayOnly) {
+            // Ticker exists neither in demo nor overlay
+            throw new Error(`Ticker "${ticker.toUpperCase()}" not found in data sources. Please verify the symbol.`)
+          }
+        }
+      } else {
+        console.log('⚠️ No Google Sheet overlay URL configured')
+        if (isOverlayOnly) {
+          throw new Error(`Ticker "${ticker.toUpperCase()}" not available. No overlay data source configured.`)
+        }
+      }
+    } catch (overlayError) {
+      console.warn('⚠️ Google Sheet overlay failed:', overlayError.message)
+      if (isOverlayOnly) {
+        // If this is an overlay-only ticker and overlay failed, we can't proceed
+        throw new Error(`Ticker "${ticker.toUpperCase()}" not found. ${overlayError.message}`)
+      }
+    }
 
-                    {/* Revenue Segments */}
-                    {stockData?.segments?.length > 0 && (
-                      <div className="mt-8 pt-6 border-t border-white/10">
-                        <h3 className="font-semibold mb-4">Revenue by Segment</h3>
-                        <div className="grid lg:grid-cols-2 gap-6">
-                          <div id="segmentPie" className="chart"></div>
-                          <div className="space-y-3">
-                            {stockData.segments.map((segment, index) => (
-                              <div key={index} className="flex items-center gap-3">
-                                <div 
-                                  className="w-4 h-4 rounded-full" 
-                                  style={{ backgroundColor: segment.itemStyle.color }}
-                                ></div>
-                                <span className="text-sm flex-1">{segment.name}</span>
-                                <span className="text-sm font-semibold">{segment.value}%</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ErrorBoundary>
-              </section>
+    // Return base data if overlay fails or ticker wasn't in overlay
+    if (!isOverlayOnly) {
+      console.log(`✅ Returning base data for ${ticker}`)
+      return baseData
+    } else {
+      throw new Error(`Ticker "${ticker.toUpperCase()}" not found in available data sources.`)
+    }
 
-              {/* 5. Investment Analysis */}
-              <section id="analysis" className="scroll-mt-24">
-                <ErrorBoundary fallback="Investment analysis section failed">
-                  <div className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold">Investment Analysis</h2>
-                      {isDemoMode && (
-                        <span className="chip px-2 py-1 text-blue-400 text-xs">
-                          🎯 Professional Analysis
-                        </span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div>
-                        <div className="ghost text-sm mb-4 flex items-center gap-2">
-                          <span className="text-green-400">✓</span> Key Investment Strengths
-                        </div>
-                        <ul className="space-y-3 text-sm">
-                          {stockData?.strengths?.map((strength, i) => (
-                            <li key={i} className="flex items-start gap-3">
-                              <span className="text-green-400 mt-1 text-xs">●</span>
-                              <span className="leading-relaxed">{strength}</span>
-                            </li>
-                          )) || (
-                            <li className="flex items-start gap-3">
-                              <span className="text-green-400 mt-1">●</span>
-                              <span>Loading investment strengths analysis...</span>
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                      <div>
-                        <div className="ghost text-sm mb-4 flex items-center gap-2">
-                          <span className="text-red-400">⚠</span> Key Investment Risks
-                        </div>
-                        <ul className="space-y-3 text-sm">
-                          {stockData?.risks?.map((risk, i) => (
-                            <li key={i} className="flex items-start gap-3">
-                              <span className="text-red-400 mt-1 text-xs">●</span>
-                              <span className="leading-relaxed">{risk}</span>
-                            </li>
-                          )) || (
-                            <li className="flex items-start gap-3">
-                              <span className="text-red-400 mt-1">●</span>
-                              <span>Loading investment risks analysis...</span>
-                            </li>
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                    
-                    {isDemoMode && (
-                      <div className="mt-6 bg-blue-500/5 rounded-lg p-4 border border-blue-400/10">
-                        <div className="text-xs text-blue-300/70">
-                          💡 <span className="text-blue-400 font-medium">Professional Analysis:</span> These strengths and risks are based on 
-                          current business fundamentals, market positioning, and industry dynamics. Analysis reflects comprehensive research 
-                          of financial metrics, competitive landscape, and market trends.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ErrorBoundary>
-              </section>
+  } catch (error) {
+    console.error('Error fetching stock data:', error)
+    throw error
+  }
+}
 
-              {/* 6. Latest News */}
-              <section id="news" className="scroll-mt-24">
-                <ErrorBoundary fallback="News section failed to load">
-                  <div className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                      <h2 className="text-2xl font-bold">Latest Company News</h2>
-                      <div className="flex items-center gap-2 text-sm ghost">
-                        {isDemoMode ? (
-                          <span className="chip px-2 py-1 text-blue-400 text-xs">📰 Demo News</span>
-                        ) : (
-                          stockData?.newsSource === 'live' && <span className="text-green-400">● Live</span>
-                        )}
-                        <span>{stockData?.news?.length || 0} items</span>
-                      </div>
-                    </div>
-                    
-                    {stockData?.news?.length > 0 ? (
-                      <div className="space-y-4">
-                        {stockData.news.slice(0, 6).map((item, i) => (
-                          <article key={i} className="p-4 rounded-xl border border-white/10 hover:border-cyan-400/40 transition-all duration-200">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="text-xs ghost">{item.source}</div>
-                              <div className="text-xs ghost">{item.datetime}</div>
-                            </div>
-                            <h3 className="font-semibold mb-2 leading-relaxed">
-                              {item.headline}
-                            </h3>
-                            {item.summary && item.summary !== item.headline && (
-                              <p className="text-sm ghost leading-relaxed mb-3">{item.summary}</p>
-                            )}
-                            <a 
-                              href={item.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-flex items-center gap-1"
-                            >
-                              Read more 
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                              </svg>
-                            </a>
-                          </article>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="text-yellow-400 text-4xl mb-4">📰</div>
-                        <div className="text-xl font-medium mb-3">No Recent News</div>
-                        <div className="text-ghost">
-                          {isDemoMode 
-                            ? `No recent news available in demo for ${ticker}. Major stocks like AAPL, MSFT, GOOGL have sample news articles.`
-                            : `No recent news available for ${ticker}`
-                          }
-                        </div>
-                      </div>
-                    )}
+// 🔥 NEW: Create minimal stock data for overlay-only tickers
+function createMinimalStockData(ticker) {
+  return {
+    ticker: ticker.toUpperCase(),
+    name: `${ticker.toUpperCase()} Corporation`,
+    sector: 'Unknown',
+    price: 0,
+    change: 0,
+    changePercent: 0,
+    marketCap: 'N/A',
+    eps: null,
+    peBands: null,
+    scores: { value: 0, growth: 0, profit: 0, momentum: 0 },
+    forwardPE: 'N/A',
+    ttmPE: 'N/A',
+    peers: [],
+    segments: [],
+    strengths: ['Loading from overlay data...'],
+    risks: ['Loading from overlay data...'],
+    news: [],
+    description: 'Loading company information from overlay data...',
+    dataQuality: {
+      quote: 'overlay_only',
+      estimates: 'overlay_only',
+      peHistory: 'overlay_only',
+      peers: 'overlay_only',
+      segments: 'overlay_only',
+      news: 'overlay_only',
+      source: 'OVERLAY_ONLY'
+    },
+    lastUpdated: new Date().toISOString()
+  }
+}
 
-                    {isDemoMode && stockData?.news?.length > 0 && (
-                      <div className="mt-6 bg-blue-500/5 rounded-lg p-4 border border-blue-400/10">
-                        <div className="text-xs text-blue-300/70">
-                          📡 <span className="text-blue-400 font-medium">News Integration:</span> In live mode, this section automatically 
-                          pulls the latest company-specific news, earnings announcements, and analyst updates from premium financial news sources 
-                          with real-time updates throughout the trading day.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ErrorBoundary>
-              </section>
+// New function to get all stock data with overlay (for reports listing)
+export async function getAllStockData() {
+  try {
+    console.log('🔄 Loading all stock data with overlay...')
+    
+    // Get base data
+    let baseData = []
+    if (DEMO_MODE) {
+      // Convert demo data object to array
+      const tickers = getDemoTickers()
+      baseData = tickers.map(ticker => getDemoStockData(ticker)).filter(Boolean)
+    } else {
+      // In live mode, you'd fetch all your supported tickers
+      const supportedTickers = ['AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA'] // Adjust as needed
+      baseData = await Promise.all(
+        supportedTickers.map(ticker => fetchLiveStockData(ticker).catch(err => {
+          console.warn(`Failed to load ${ticker}:`, err)
+          return null
+        }))
+      ).then(results => results.filter(Boolean))
+    }
 
-              {/* Ready to Go Live Footer */}
-              {isDemoMode && (
-                <div className="mt-12">
-                  <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
-                    <div className="text-center">
-                      <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
-                      <div className="text-sm ghost mb-4">
-                        This demo showcases institutional-grade stock analysis with {availableTickers.length || '115'} stocks including Hong Kong listings. 
-                        When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
-                      </div>
-                      <div className="flex flex-wrap justify-center gap-2 text-xs">
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Forward EPS Estimates</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Dynamic P/E Bands</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Peer Comparisons</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Quality Scoring</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Real-time News</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Bloomberg Data</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+    console.log(`Base data loaded: ${baseData.length} stocks`)
 
-            </main>
-          </div>
+    // Apply Google Sheet overlay
+    try {
+      const overlayUrl = getOverlayUrl()
+      if (overlayUrl) {
+        console.log('🔄 Applying Google Sheet overlay to all stocks...')
+        
+        const csvText = await fetchCsvText(overlayUrl)
+        if (csvText) {
+          const rows = parseCsvToObjects(csvText)
+          const overlayMap = indexByTicker(rows)
+          
+          const overlayedData = applyOverlay(baseData, overlayMap)
+          console.log(`✅ Google Sheet overlay applied to ${overlayedData.length} stocks`)
+          return overlayedData
+        }
+      }
+    } catch (overlayError) {
+      console.warn('⚠️ Google Sheet overlay failed for all stocks, using base data:', overlayError.message)
+    }
 
-        </div>
-      </ErrorBoundary>
-    </>
-  )
+    return baseData
+
+  } catch (error) {
+    console.error('Error fetching all stock data:', error)
+    return []
+  }
+}
+
+// Market data with overlay support
+export async function fetchMarketData() {
+  if (DEMO_MODE) {
+    // Add small delay to simulate API call
+    await new Promise(resolve => setTimeout(resolve, 300))
+    return getDemoMarketData()
+  }
+  
+  // Live market data (your existing code)
+  return [
+    {
+      headline: 'Market Update: Live news will be available soon',
+      summary: 'Currently in demo mode with sample news data.',
+      source: 'Demo',
+      datetime: 'Just now',
+      url: '#'
+    }
+  ]
+}
+
+// Get news with overlay support (placeholder for now)
+export async function fetchNewsData() {
+  if (DEMO_MODE) {
+    return [
+      {
+        headline: 'Stock Market Reaches New Highs',
+        summary: 'Major indices continue to show strong performance...',
+        source: 'Financial Times',
+        datetime: '2 hours ago',
+        url: 'https://www.ft.com/markets'
+      },
+      {
+        headline: 'Tech Earnings Season Begins',
+        summary: 'Major tech companies preparing to report quarterly results...',
+        source: 'Financial Times',
+        datetime: '6 hours ago',
+        url: 'https://www.ft.com/markets'
+      }
+    ]
+  }
+  
+  // Live news when ready
+  return [
+    {
+      headline: 'Market Update: Live news will be available soon',
+      summary: 'Currently in demo mode with sample news data.',
+      source: 'Demo',
+      datetime: 'Just now',
+      url: '#'
+    }
+  ]
+}
+
+// Helper function to switch modes
+export function setDemoMode(enabled) {
+  // Note: In production, you'd want to store this in localStorage or environment
+  console.log(`Switching to ${enabled ? 'DEMO' : 'LIVE'} mode`)
+  // This would require a restart in the current implementation
+  // but could be made dynamic with state management
+}
+
+// Get available tickers including overlay data
+export async function getAvailableTickers() {
+  try {
+    // Get all stock data including overlay
+    const allStocks = await getAllStockData()
+    
+    // Extract tickers and sort them, ensuring no duplicates
+    const allTickers = [...new Set(allStocks
+      .map(stock => stock.ticker?.toUpperCase())
+      .filter(Boolean))]
+      .sort()
+    
+    console.log(`📋 Available tickers (${allTickers.length}):`, allTickers.slice(0, 20), '...')
+    console.log(`📊 Base stocks: ${allStocks.filter(s => !s.dataQuality?.overlayed).length}`)
+    console.log(`📊 Overlay stocks: ${allStocks.filter(s => s.dataQuality?.overlayed).length}`)
+    console.log(`📊 Total unique tickers: ${allTickers.length}`)
+    
+    return allTickers
+    
+  } catch (error) {
+    console.error('Error getting available tickers:', error)
+    
+    // Fallback to base demo tickers if overlay fails
+    if (DEMO_MODE) {
+      return getDemoTickers()
+    }
+    return ['AAPL', 'MSFT', 'GOOGL', 'META', 'AMZN', 'NVDA'] // Live API supported tickers
+  }
+}
+
+// Your existing live API code (keep for when you go live)
+async function fetchLiveStockData(ticker) {
+  // Step 1: Fetch quote data first (most critical)
+  const quoteRes = await fetch(`/api/quote?symbol=${ticker}`)
+  if (!quoteRes.ok) {
+    throw new Error(`Failed to fetch quote for ${ticker}`)
+  }
+  
+  const quoteData = await quoteRes.json()
+  if (quoteData.error) {
+    throw new Error(`Ticker "${ticker.toUpperCase()}" not found. Please verify the symbol.`)
+  }
+
+  console.log('Quote data received:', quoteData)
+
+  // Step 2: Fetch all other data in parallel
+  const [estimatesRes, peHistoryRes, peersRes, segmentsRes, newsRes] = await Promise.allSettled([
+    fetchWithRetry(`/api/analyst-estimates?symbol=${ticker}`),
+    fetchWithRetry(`/api/pe-history?symbol=${ticker}`),
+    fetchWithRetry(`/api/peers?symbol=${ticker}`),  
+    fetchWithRetry(`/api/segments?symbol=${ticker}`),
+    fetchWithRetry(`/api/news/company?symbol=${ticker}`)
+  ])
+
+  // Extract data from settled promises
+  const estimates = estimatesRes.status === 'fulfilled' ? estimatesRes.value : { error: 'Failed to fetch' }
+  const peHistory = peHistoryRes.status === 'fulfilled' ? peHistoryRes.value : { error: 'Failed to fetch' }
+  const peers = peersRes.status === 'fulfilled' ? peersRes.value : { error: 'Failed to fetch' }
+  const segments = segmentsRes.status === 'fulfilled' ? segmentsRes.value : { error: 'Failed to fetch' }
+  const news = newsRes.status === 'fulfilled' ? newsRes.value : { error: 'Failed to fetch' }
+
+  console.log('API responses:', { estimates, peHistory, peers, segments, news })
+
+  // Step 3: Calculate derived metrics
+  let forwardPE = 'N/A'
+  let ttmPE = 'N/A'
+  
+  if (!estimates.error && estimates.eps?.values?.length > 0) {
+    forwardPE = Math.round((quoteData.c / estimates.eps.values[0]) * 100) / 100
+  }
+  
+  if (quoteData.basic?.ttmEPS) {
+    ttmPE = Math.round((quoteData.c / quoteData.basic.ttmEPS) * 100) / 100
+  }
+
+  // Step 4: Build comprehensive stock data object
+  const stockData = {
+    ticker: ticker.toUpperCase(),
+    name: quoteData.basic?.name || `${ticker.toUpperCase()} Corp`,
+    sector: quoteData.basic?.finnhubIndustry || 'Unknown',
+    
+    // Price data
+    price: quoteData.c,
+    change: quoteData.d,
+    changePercent: quoteData.dp,
+    
+    // Key stats
+    marketCap: quoteData.basic?.marketCapitalization || 0,
+    forwardPE: forwardPE,
+    ttmPE: ttmPE,
+    
+    // Analyst estimates
+    eps: estimates.error ? null : estimates.eps,
+    
+    // Valuation bands
+    peBands: peHistory.error ? null : peHistory.peBands,
+    
+    // Related companies
+    peers: peers.error ? [] : (peers.peers || []),
+    
+    // Business segments  
+    segments: segments.error ? [] : (segments.segments || []),
+    
+    // Company analysis
+    strengths: ['Strong market position', 'Solid financials', 'Growth opportunities'],
+    risks: ['Market competition', 'Regulatory changes', 'Economic headwinds'],
+    
+    // Recent news
+    news: news.error ? [] : (news.news || []),
+    
+    // Data quality indicators
+    dataQuality: {
+      quote: !quoteData.error,
+      estimates: !estimates.error,
+      peHistory: !peHistory.error,
+      peers: !peers.error,
+      segments: !segments.error,
+      news: !news.error,
+      source: 'LIVE_API'
+    },
+    
+    lastUpdated: new Date().toISOString()
+  }
+
+  return stockData
+}
+
+async function fetchWithRetry(url, retries = 2) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      const response = await fetch(url)
+      if (response.ok) {
+        return await response.json()
+      }
+      throw new Error(`HTTP ${response.status}`)
+    } catch (error) {
+      console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message)
+      if (i === retries) throw error
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)))
+    }
+  }
 }
