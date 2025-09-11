@@ -1,43 +1,52 @@
-// components/ReportContent.js - Fixed to work with existing structure
+// components/ReportContent.js - Your ORIGINAL design with just compact categories + 115 stock search
 'use client'
-
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { fetchStockData, getAllStockData } from '@/lib/api'
-import { getAvailableCategories } from '@/lib/demoData'
 import Navigation from './Navigation'
 import { initCharts, updateChartsTheme } from './ChartComponents'
+import { fetchStockData, getAllStockData } from '@/lib/api'
 import { getStockCategories } from '@/lib/demoData'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useTheme } from '@/contexts/ThemeContext'
 
 export default function ReportContent() {
   const [stockData, setStockData] = useState(null)
+  const [ticker, setTicker] = useState('AAPL')
+  const [inputTicker, setInputTicker] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [ticker, setTicker] = useState('')
-  const [inputTicker, setInputTicker] = useState('')
   const [updateKey, setUpdateKey] = useState(0)
-  const [availableStocks, setAvailableStocks] = useState([])
-  const [categories, setCategories] = useState({})
-  const [activeCategory, setActiveCategory] = useState('POPULAR')
-  const [showFullStockList, setShowFullStockList] = useState(false)
   const [activeSection, setActiveSection] = useState('overview')
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const [availableStocks, setAvailableStocks] = useState([])
   const { theme } = useTheme()
-  
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Load available stocks and categories on mount
+  // Get available tickers and categories
+  const stockCategories = getStockCategories()
+
+  // Load available stocks for search
   useEffect(() => {
     loadAvailableStocks()
   }, [])
 
-  // Handle URL parameter changes
+  const loadAvailableStocks = async () => {
+    try {
+      const allStocks = await getAllStockData()
+      setAvailableStocks(allStocks)
+    } catch (error) {
+      console.error('Error loading available stocks:', error)
+    }
+  }
+
+  // Load initial stock or from URL parameter
   useEffect(() => {
-    const tickerParam = searchParams.get('ticker')
-    if (tickerParam && tickerParam !== ticker) {
-      loadStockData(tickerParam)
+    const urlTicker = searchParams.get('ticker')
+    if (urlTicker && urlTicker !== ticker) {
+      loadStockData(urlTicker)
+    } else if (!urlTicker) {
+      loadStockData('AAPL')
     }
   }, [searchParams])
 
@@ -71,25 +80,6 @@ export default function ReportContent() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  const loadAvailableStocks = async () => {
-    try {
-      console.log('🔄 Loading available stocks...')
-      
-      // Load all stocks from Google Sheet
-      const allStocks = await getAllStockData()
-      setAvailableStocks(allStocks)
-      
-      // Load dynamic categories
-      const dynamicCategories = await getAvailableCategories()
-      setCategories(dynamicCategories)
-      
-      console.log(`✅ Loaded ${allStocks.length} stocks with ${Object.keys(dynamicCategories).length} categories`)
-      
-    } catch (error) {
-      console.error('Error loading available stocks:', error)
-    }
-  }
 
   const loadStockData = async (symbol) => {
     setLoading(true)
@@ -147,21 +137,6 @@ export default function ReportContent() {
     }
   }
 
-  // Get filtered tickers for search suggestions
-  const getSearchSuggestions = (input) => {
-    if (!input || input.length < 1) return []
-    
-    const searchTerm = input.toUpperCase()
-    return availableStocks
-      .filter(stock => 
-        stock.ticker.includes(searchTerm) || 
-        stock.name.toUpperCase().includes(searchTerm)
-      )
-      .slice(0, 8) // Show max 8 suggestions
-  }
-
-  const searchSuggestions = getSearchSuggestions(inputTicker)
-
   // Demo mode indicator
   const isDemoMode = stockData?.dataQuality?.quote === 'demo'
 
@@ -182,27 +157,39 @@ export default function ReportContent() {
     return 'fair'
   }
 
-  // Loading spinner component
-  const LoadingSpinner = ({ message = "Loading..." }) => (
-    <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-        <p className="text-gray-400">{message}</p>
-      </div>
-    </div>
-  )
+  // Get search suggestions
+  const getSearchSuggestions = (input) => {
+    if (!input || input.length < 1) return []
+    
+    const searchTerm = input.toUpperCase()
+    return availableStocks
+      .filter(stock => 
+        stock.ticker.includes(searchTerm) || 
+        stock.name.toUpperCase().includes(searchTerm)
+      )
+      .slice(0, 6)
+  }
+
+  const searchSuggestions = getSearchSuggestions(inputTicker)
 
   if (loading) {
-    return <LoadingSpinner message="Loading stock analysis..." />
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+          <p className="opacity-60">Loading stock analysis...</p>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-400 text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-2">Unable to load stock data</h2>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <p className="opacity-60 mb-6">{error}</p>
           <button 
             onClick={() => window.location.reload()}
             className="btn-primary px-6 py-3 rounded-lg"
@@ -215,26 +202,26 @@ export default function ReportContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen">
       <Navigation />
       
       <div className="max-w-7xl mx-auto px-4 py-6" key={updateKey}>
         
-        {/* Enhanced Demo Mode Header */}
+        {/* Demo Mode Header Banner */}
         {isDemoMode && (
           <div className="mb-6">
-            <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-4">
+            <div className="card p-4 border border-blue-400/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                   <div>
                     <div className="text-blue-400 font-semibold">🎯 Professional Demo Mode</div>
-                    <div className="text-sm text-blue-300/80">
-                      {availableStocks.length}+ stocks with real Bloomberg Terminal data including global markets
+                    <div className="text-sm opacity-60">
+                      {availableStocks.length}+ stocks with real Bloomberg Terminal data
                     </div>
                   </div>
                 </div>
-                <div className="chip px-3 py-2 bg-blue-500/20">
+                <div className="chip px-3 py-2">
                   <span className="text-blue-400 font-medium">Bloomberg Data</span>
                 </div>
               </div>
@@ -242,27 +229,26 @@ export default function ReportContent() {
           </div>
         )}
 
-        {/* MODERN COMPACT SEARCH INTERFACE */}
+        {/* COMPACT SEARCH INTERFACE - ONLY CHANGE YOU REQUESTED */}
         <div className="mb-8">
-          <div className="card p-6">
-            
-            {/* Enhanced Search Input with Suggestions */}
-            <div className="mb-6">
-              <div className="relative max-w-2xl mx-auto">
+          <div className="card p-4">
+            {/* Search Input */}
+            <div className="mb-4">
+              <div className="relative max-w-xl mx-auto">
                 <form onSubmit={handleSearch} className="flex gap-3">
                   <div className="flex-1 relative">
                     <input
                       type="text"
                       value={inputTicker}
                       onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                      placeholder={`Search ${availableStocks.length}+ stocks (e.g., AAPL, 700, TSLA)`}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 text-lg pr-20"
+                      placeholder={`Search ${availableStocks.length}+ stocks (AAPL, 700, TSLA)`}
+                      className="w-full px-4 py-3 rounded-lg focus:ring-2 focus:ring-cyan-400"
                     />
                     {inputTicker && (
                       <button 
                         type="button"
                         onClick={() => setInputTicker('')}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 opacity-60 hover:opacity-100"
                       >
                         ✕
                       </button>
@@ -270,16 +256,16 @@ export default function ReportContent() {
                   </div>
                   <button 
                     type="submit" 
-                    className="btn-primary px-6 py-3 rounded-lg text-lg font-semibold whitespace-nowrap"
+                    className="btn-primary px-6 py-3 rounded-lg font-semibold"
                     disabled={loading}
                   >
                     Analyze
                   </button>
                 </form>
                 
-                {/* Search Suggestions Dropdown */}
+                {/* Search Suggestions */}
                 {inputTicker && searchSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-16 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
                     {searchSuggestions.map((stock) => (
                       <button
                         key={stock.ticker}
@@ -287,13 +273,13 @@ export default function ReportContent() {
                           setInputTicker('')
                           handleStockClick(stock.ticker)
                         }}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 last:border-b-0"
+                        className="w-full px-4 py-3 text-left hover:bg-gray-700 flex items-center justify-between border-b border-gray-700 last:border-b-0"
                       >
                         <div>
-                          <div className="font-semibold text-gray-900">{stock.ticker}</div>
-                          <div className="text-sm text-gray-500 truncate">{stock.name}</div>
+                          <div className="font-semibold">{stock.ticker}</div>
+                          <div className="text-sm opacity-60 truncate">{stock.name}</div>
                         </div>
-                        <div className="text-sm text-gray-400">${stock.price}</div>
+                        <div className="text-sm opacity-60">${stock.price}</div>
                       </button>
                     ))}
                   </div>
@@ -301,87 +287,68 @@ export default function ReportContent() {
               </div>
             </div>
 
-            {/* COMPACT CATEGORY PILLS */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Quick Browse</h3>
-                <div className="text-sm text-gray-400">
-                  {availableStocks.length} stocks available
-                </div>
+            {/* COMPACT CATEGORIES - HORIZONTAL PILLS */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold">Browse by Category</h4>
+                <button
+                  onClick={() => setShowAllCategories(!showAllCategories)}
+                  className="text-cyan-400 hover:text-cyan-300 text-sm"
+                >
+                  {showAllCategories ? 'Show Less' : `Show All (${availableStocks.length} stocks)`}
+                </button>
               </div>
 
-              {/* Category Pills - Horizontal Scrollable */}
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                {Object.entries(categories).map(([categoryKey, category]) => (
-                  <button
-                    key={categoryKey}
-                    onClick={() => setActiveCategory(categoryKey)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-200 ${
-                      activeCategory === categoryKey
-                        ? 'text-white shadow-lg transform scale-105' 
-                        : 'text-white/70 hover:text-white hover:transform hover:scale-105'
-                    }`}
-                    style={{ 
-                      backgroundColor: activeCategory === categoryKey 
-                        ? category.color 
-                        : category.color + '40',
-                      border: `1px solid ${category.color}60`
-                    }}
-                  >
-                    <span>{category.label}</span>
-                    <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                      {category.count}
-                    </span>
-                  </button>
+              {/* Horizontal Category Pills */}
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                {Object.entries(stockCategories).map(([categoryKey, category]) => (
+                  <div key={categoryKey} className={`${!showAllCategories && categoryKey !== 'HK_STOCKS' && !category.tickers.includes(ticker) ? 'hidden' : ''}`}>
+                    <div className="flex items-center gap-2 mb-2 min-w-max">
+                      <div 
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: category.color }}
+                      ></div>
+                      <span className="text-sm font-medium" style={{ color: category.color }}>
+                        {category.label}
+                        {categoryKey === 'HK_STOCKS' && (
+                          <span className="ml-1 text-xs bg-orange-500/20 text-orange-400 px-1 rounded">🇭🇰</span>
+                        )}
+                      </span>
+                      <span className="text-xs opacity-50">({category.tickers.length})</span>
+                    </div>
+                  </div>
                 ))}
               </div>
-
-              {/* Selected Category Stocks */}
-              {categories[activeCategory] && (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
-                    {categories[activeCategory].tickers.slice(0, showFullStockList ? undefined : 12).map(tickerSymbol => {
-                      const stockInfo = availableStocks.find(s => s.ticker === tickerSymbol)
-                      return (
-                        <button
-                          key={tickerSymbol}
-                          onClick={() => handleStockClick(tickerSymbol)}
-                          className={`group px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
-                            ticker === tickerSymbol
-                              ? 'bg-cyan-500 text-white shadow-lg transform scale-105' 
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white hover:transform hover:scale-105'
-                          }`}
-                        >
-                          <span className="font-bold">{tickerSymbol}</span>
-                          {stockInfo && (
-                            <span className="text-xs opacity-75">
-                              ${stockInfo.price}
-                            </span>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  
-                  {/* Show More/Less for categories with many stocks */}
-                  {categories[activeCategory].tickers.length > 12 && (
+              
+              {/* Stock Buttons */}
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(stockCategories).map(([categoryKey, category]) => 
+                  category.tickers.slice(0, showAllCategories ? undefined : 8).map(tickerSymbol => (
                     <button
-                      onClick={() => setShowFullStockList(!showFullStockList)}
-                      className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
+                      key={tickerSymbol}
+                      onClick={() => handleStockClick(tickerSymbol)}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-all ${
+                        ticker === tickerSymbol
+                          ? 'text-white shadow-lg' 
+                          : 'opacity-70 hover:opacity-100'
+                      }`}
+                      style={{ 
+                        backgroundColor: ticker === tickerSymbol 
+                          ? category.color 
+                          : category.color + '40',
+                        border: `1px solid ${category.color}60`
+                      }}
                     >
-                      {showFullStockList 
-                        ? `Show Less` 
-                        : `Show ${categories[activeCategory].tickers.length - 12} More`
-                      }
+                      {tickerSymbol}
                     </button>
-                  )}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* STOCK REPORT SECTION */}
+        {/* YOUR ORIGINAL STOCK REPORT LAYOUT */}
         {stockData ? (
           <div className="space-y-8">
             
@@ -390,10 +357,10 @@ export default function ReportContent() {
               <div className="flex items-center gap-4">
                 <div>
                   <h1 className="text-3xl font-bold">{stockData.ticker}</h1>
-                  <p className="text-lg ghost">{stockData.name}</p>
+                  <p className="text-lg opacity-60">{stockData.name}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl font-bold text-white">
+                  <div className="text-2xl font-bold">
                     ${stockData.price}
                   </div>
                   <div className={`px-3 py-1 rounded text-sm font-medium ${
@@ -406,7 +373,7 @@ export default function ReportContent() {
                 </div>
               </div>
               
-              {/* Valuation Position Indicator */}
+              {/* Valuation Position */}
               {getValuationPosition() && (
                 <div className={`px-4 py-2 rounded-lg text-sm font-medium ${
                   getValuationPosition() === 'undervalued' ? 'bg-green-500/20 text-green-400' :
@@ -436,7 +403,7 @@ export default function ReportContent() {
                   className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                     activeSection === section.id
                       ? 'bg-cyan-500 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-gray-700 hover:bg-gray-600'
                   }`}
                 >
                   {section.label}
@@ -444,7 +411,7 @@ export default function ReportContent() {
               ))}
             </div>
 
-            {/* Report Content */}
+            {/* YOUR ORIGINAL REPORT CONTENT */}
             <div className="space-y-8">
               
               {/* 1. Overview Section */}
@@ -452,7 +419,7 @@ export default function ReportContent() {
                 <ErrorBoundary fallback="Overview section failed to load">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
-                    {/* Quality Scores */}
+                    {/* Quality Scores Panel */}
                     <div className="card p-6">
                       <h3 className="font-semibold mb-4">Quality Scores</h3>
                       <div className="space-y-4">
@@ -478,7 +445,6 @@ export default function ReportContent() {
 
                     {/* Company Info & Key Stats */}
                     <div className="lg:col-span-2 space-y-6">
-                      {/* Company Description */}
                       <div>
                         <h3 className="font-semibold mb-3">About the Company</h3>
                         <p className="leading-relaxed mb-6">
@@ -487,19 +453,19 @@ export default function ReportContent() {
                         
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="chip px-3 py-2">
-                            <div className="text-xs ghost">Market Cap</div>
+                            <div className="text-xs opacity-60">Market Cap</div>
                             <div className="font-semibold">{stockData?.marketCap || 'N/A'}</div>
                           </div>
                           <div className="chip px-3 py-2">
-                            <div className="text-xs ghost">Forward P/E</div>
+                            <div className="text-xs opacity-60">Forward P/E</div>
                             <div className="font-semibold">{stockData?.forwardPE || 'N/A'}</div>
                           </div>
                           <div className="chip px-3 py-2">
-                            <div className="text-xs ghost">TTM P/E</div>
+                            <div className="text-xs opacity-60">TTM P/E</div>
                             <div className="font-semibold">{stockData?.ttmPE || 'N/A'}</div>
                           </div>
                           <div className="chip px-3 py-2">
-                            <div className="text-xs ghost">Sector</div>
+                            <div className="text-xs opacity-60">Sector</div>
                             <div className="font-semibold">{stockData?.sector || 'Technology'}</div>
                           </div>
                         </div>
@@ -520,13 +486,13 @@ export default function ReportContent() {
                         <div className="mb-6">
                           <canvas id="valuation-chart" width="600" height="400"></canvas>
                         </div>
-                        <div className="text-sm text-gray-400">
+                        <div className="text-sm opacity-60">
                           P/E bands based on historical forward P/E distribution. 
                           Current price compared to analyst EPS estimates × P/E ranges.
                         </div>
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-400">
+                      <div className="text-center py-8 opacity-60">
                         <div className="text-4xl mb-4">📊</div>
                         <p>Valuation analysis requires analyst EPS estimates</p>
                       </div>
@@ -544,7 +510,7 @@ export default function ReportContent() {
                       {stockData?.scores && Object.entries(stockData.scores).map(([metric, score]) => (
                         <div key={metric} className="text-center">
                           <div className="text-3xl font-bold mb-2">{score}/10</div>
-                          <div className="text-sm uppercase tracking-wide ghost">{metric}</div>
+                          <div className="text-sm uppercase tracking-wide opacity-60">{metric}</div>
                           <div className="w-full bg-gray-700 rounded-full h-2 mt-3">
                             <div 
                               className={`h-2 rounded-full ${
@@ -572,7 +538,7 @@ export default function ReportContent() {
                       <div className="mb-4">
                         <canvas id="peers-chart" width="400" height="300"></canvas>
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs opacity-60">
                         Market Cap (x-axis) vs Forward P/E (y-axis). Bubble size = relative valuation.
                       </div>
                     </div>
@@ -601,7 +567,7 @@ export default function ReportContent() {
                           </div>
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-gray-400">
+                        <div className="text-center py-8 opacity-60">
                           <div className="text-4xl mb-4">🏢</div>
                           <p>Segment data not available</p>
                         </div>
@@ -625,7 +591,7 @@ export default function ReportContent() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div>
-                        <div className="ghost text-sm mb-4 flex items-center gap-2">
+                        <div className="opacity-60 text-sm mb-4 flex items-center gap-2">
                           <span className="text-green-400">✓</span> Key Investment Strengths
                         </div>
                         <ul className="space-y-3 text-sm">
@@ -643,7 +609,7 @@ export default function ReportContent() {
                         </ul>
                       </div>
                       <div>
-                        <div className="ghost text-sm mb-4 flex items-center gap-2">
+                        <div className="opacity-60 text-sm mb-4 flex items-center gap-2">
                           <span className="text-red-400">⚠</span> Key Investment Risks
                         </div>
                         <ul className="space-y-3 text-sm">
@@ -680,9 +646,9 @@ export default function ReportContent() {
                                   {article.headline}
                                 </h4>
                                 {article.summary && (
-                                  <p className="text-sm text-gray-400 mb-2">{article.summary}</p>
+                                  <p className="text-sm opacity-60 mb-2">{article.summary}</p>
                                 )}
-                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                <div className="flex items-center gap-3 text-xs opacity-50">
                                   <span>{article.source}</span>
                                   <span>•</span>
                                   <span>{article.datetime}</span>
@@ -703,7 +669,7 @@ export default function ReportContent() {
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-400">
+                      <div className="text-center py-8 opacity-60">
                         <div className="text-4xl mb-4">📰</div>
                         <p>No recent news available</p>
                       </div>
@@ -718,44 +684,12 @@ export default function ReportContent() {
           <div className="text-center py-16">
             <div className="text-6xl mb-4">📊</div>
             <h2 className="text-2xl font-bold mb-4">Professional Stock Valuation</h2>
-            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Search for any of our {availableStocks.length}+ stocks to get institutional-grade analysis with real Bloomberg data, 
-              dynamic P/E valuation bands, and comprehensive financial insights.
+            <p className="opacity-60 mb-8 max-w-2xl mx-auto">
+              Search for any of our {availableStocks.length}+ stocks to get institutional-grade analysis.
             </p>
-            
-            {/* Featured Popular Stocks */}
-            {categories.POPULAR && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                {categories.POPULAR.tickers.slice(0, 8).map(tickerSymbol => {
-                  const stockInfo = availableStocks.find(s => s.ticker === tickerSymbol)
-                  return stockInfo ? (
-                    <button
-                      key={tickerSymbol}
-                      onClick={() => handleStockClick(tickerSymbol)}
-                      className="p-4 bg-gray-800 hover:bg-gray-700 rounded-lg transition-all duration-200 hover:transform hover:scale-105"
-                    >
-                      <div className="font-bold text-lg">{tickerSymbol}</div>
-                      <div className="text-sm text-gray-400 truncate">{stockInfo.name}</div>
-                      <div className="text-cyan-400 font-semibold">${stockInfo.price}</div>
-                    </button>
-                  ) : null
-                })}
-              </div>
-            )}
           </div>
         )}
       </div>
-
-      {/* Add CSS for hiding scrollbar */}
-      <style jsx>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
     </div>
   )
 }
