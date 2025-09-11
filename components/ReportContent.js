@@ -1,10 +1,10 @@
-// components/ReportContent.js - YOUR EXACT ORIGINAL with ONLY compact categories + 115 stock search
+// components/ReportContent.js - YOUR EXACT ORIGINAL with only compact categories
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from './Navigation'
 import { initCharts, updateChartsTheme } from './ChartComponents'
-import { fetchStockData, getAllStockData } from '@/lib/api'
+import { fetchStockData, getAvailableTickers, getAllStockData } from '@/lib/api'
 import { getStockCategories } from '@/lib/demoData'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -24,9 +24,10 @@ export default function ReportContent() {
   const searchParams = useSearchParams()
 
   // Get available tickers and categories
+  const availableTickers = getAvailableTickers()
   const stockCategories = getStockCategories()
 
-  // Load available stocks for 115 stock search
+  // Load available stocks count for 115 stock support
   useEffect(() => {
     loadAvailableStocks()
   }, [])
@@ -118,6 +119,7 @@ export default function ReportContent() {
   const handleSearch = (e) => {
     e.preventDefault()
     if (inputTicker.trim()) {
+      // Navigate to trigger middleware check
       router.push(`/report?ticker=${inputTicker.trim().toUpperCase()}`)
       setInputTicker('')
     }
@@ -125,6 +127,7 @@ export default function ReportContent() {
 
   const handleStockClick = (tickerSymbol) => {
     console.log('[ReportContent] Stock clicked:', tickerSymbol)
+    // Navigate to trigger middleware check
     router.push(`/report?ticker=${tickerSymbol}`)
   }
 
@@ -155,27 +158,12 @@ export default function ReportContent() {
     return 'fair'
   }
 
-  // Get search suggestions for 115 stocks
-  const getSearchSuggestions = (input) => {
-    if (!input || input.length < 1) return []
-    
-    const searchTerm = input.toUpperCase()
-    return availableStocks
-      .filter(stock => 
-        stock.ticker.includes(searchTerm) || 
-        stock.name.toUpperCase().includes(searchTerm)
-      )
-      .slice(0, 6)
-  }
-
-  const searchSuggestions = getSearchSuggestions(inputTicker)
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <p className="opacity-60">Loading stock analysis...</p>
+          <p className="text-gray-400">Loading stock analysis...</p>
         </div>
       </div>
     )
@@ -183,11 +171,11 @@ export default function ReportContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-400 text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold mb-2">Unable to load stock data</h2>
-          <p className="opacity-60 mb-6">{error}</p>
+          <p className="text-gray-400 mb-6">{error}</p>
           <button 
             onClick={() => window.location.reload()}
             className="btn-primary px-6 py-3 rounded-lg"
@@ -200,9 +188,7 @@ export default function ReportContent() {
   }
 
   return (
-    <div className="min-h-screen">
-      <Navigation />
-      
+    <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto px-4 py-6" key={updateKey}>
         
         {/* Demo Mode Header Banner */}
@@ -227,65 +213,30 @@ export default function ReportContent() {
           </div>
         )}
 
-        {/* ENHANCED COMPACT SEARCH INTERFACE - ONLY CHANGE YOU REQUESTED */}
+        {/* COMPACT SEARCH INTERFACE - ONLY CHANGE YOU REQUESTED */}
         <div className="mb-8">
           <div className="card p-4">
             {/* Search Input */}
             <div className="mb-4">
-              <div className="relative max-w-md">
-                <form onSubmit={handleSearch} className="flex gap-3">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={inputTicker}
-                      onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                      placeholder={`Enter ticker (e.g., AAPL, 700)`}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 text-lg"
-                    />
-                    {inputTicker && (
-                      <button 
-                        type="button"
-                        onClick={() => setInputTicker('')}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                  <button 
-                    type="submit" 
-                    className="btn-primary px-6 py-3 rounded-lg text-lg font-semibold"
-                    disabled={loading}
-                  >
-                    Analyze
-                  </button>
-                </form>
-                
-                {/* Search Suggestions Dropdown */}
-                {inputTicker && searchSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-20 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
-                    {searchSuggestions.map((stock) => (
-                      <button
-                        key={stock.ticker}
-                        onClick={() => {
-                          setInputTicker('')
-                          handleStockClick(stock.ticker)
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 last:border-b-0"
-                      >
-                        <div>
-                          <div className="font-semibold text-gray-900">{stock.ticker}</div>
-                          <div className="text-sm text-gray-500 truncate">{stock.name}</div>
-                        </div>
-                        <div className="text-sm text-gray-400">${stock.price}</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <form onSubmit={handleSearch} className="flex gap-3 max-w-md">
+                <input
+                  type="text"
+                  value={inputTicker}
+                  onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                  placeholder="Enter ticker (e.g., AAPL, 700)"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 text-lg"
+                />
+                <button 
+                  type="submit" 
+                  className="btn-primary px-6 py-3 rounded-lg text-lg font-semibold"
+                  disabled={loading}
+                >
+                  Analyze
+                </button>
+              </form>
             </div>
 
-            {/* COMPACT COLORFUL STOCK CATEGORIES - HORIZONTAL LAYOUT */}
+            {/* COMPACT COLORFUL STOCK CATEGORIES */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Browse by Category</h3>
@@ -297,67 +248,56 @@ export default function ReportContent() {
                 </button>
               </div>
 
-              {/* Horizontal Category Tags */}
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(stockCategories).map(([categoryKey, category]) => (
-                  <div key={categoryKey} className={`transition-all duration-300 ${showAllCategories ? 'block' : categoryKey === 'HK_STOCKS' || category.tickers.includes(ticker) ? 'block' : 'hidden'}`}>
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm border" 
-                         style={{ 
-                           backgroundColor: category.color + '20',
-                           borderColor: category.color + '40',
-                           color: category.color
-                         }}>
-                      <div 
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      ></div>
-                      <span className="font-medium">
-                        {category.label}
-                        {categoryKey === 'HK_STOCKS' && (
-                          <span className="ml-1 text-xs">🇭🇰</span>
-                        )}
-                      </span>
-                      <span className="text-xs opacity-75">({category.tickers.length})</span>
-                    </div>
+              {Object.entries(stockCategories).map(([categoryKey, category]) => (
+                <div key={categoryKey} className={`transition-all duration-300 ${showAllCategories ? 'block' : categoryKey === 'HK_STOCKS' || category.tickers.includes(ticker) ? 'block' : 'hidden'}`}>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div 
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: category.color }}
+                    ></div>
+                    <h4 className="font-semibold text-sm" style={{ color: category.color }}>
+                      {category.label}
+                      {categoryKey === 'HK_STOCKS' && (
+                        <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded">🇭🇰 Hong Kong</span>
+                      )}
+                    </h4>
+                    <span className="text-xs ghost">({category.tickers.length})</span>
                   </div>
-                ))}
-              </div>
-              
-              {/* Stock Buttons */}
-              <div className="flex flex-wrap gap-2">
-                {Object.entries(stockCategories).map(([categoryKey, category]) => 
-                  category.tickers.slice(0, showAllCategories ? undefined : 12).map(tickerSymbol => (
-                    <button
-                      key={tickerSymbol}
-                      onClick={() => handleStockClick(tickerSymbol)}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        ticker === tickerSymbol
-                          ? 'text-white shadow-lg transform scale-105' 
-                          : 'text-white/80 hover:text-white hover:transform hover:scale-105'
-                      }`}
-                      style={{ 
-                        backgroundColor: ticker === tickerSymbol 
-                          ? category.color 
-                          : category.color + '80',
-                        boxShadow: ticker === tickerSymbol 
-                          ? `0 4px 14px ${category.color}40` 
-                          : 'none'
-                      }}
-                    >
-                      {tickerSymbol}
-                    </button>
-                  ))
-                )}
-              </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {category.tickers.map(tickerSymbol => (
+                      <button
+                        key={tickerSymbol}
+                        onClick={() => handleStockClick(tickerSymbol)}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-all duration-200 ${
+                          ticker === tickerSymbol
+                            ? 'text-white shadow-lg transform scale-105' 
+                            : 'text-white/80 hover:text-white hover:transform hover:scale-105'
+                        }`}
+                        style={{ 
+                          backgroundColor: ticker === tickerSymbol 
+                            ? category.color 
+                            : category.color + '80',
+                          boxShadow: ticker === tickerSymbol 
+                            ? `0 4px 14px ${category.color}40` 
+                            : 'none'
+                        }}
+                      >
+                        {tickerSymbol}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* STOCK REPORT SECTION - YOUR ORIGINAL LAYOUT */}
+        {/* STOCK REPORT SECTION - YOUR EXACT ORIGINAL LAYOUT */}
         {stockData ? (
           <div className="space-y-8">
             
-            {/* Stock Header & Navigation */}
+            {/* Stock Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-4">
                 <div>
