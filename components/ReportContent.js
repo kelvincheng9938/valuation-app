@@ -206,7 +206,7 @@ export default function ReportContent() {
   const getDataQualityBadge = (quality, label) => {
     if (quality === 'demo' || quality === 'bloomberg_real') {
       return <span className="chip px-2 py-1 text-blue-400 text-xs">📊 {label}</span>
-    } else if (quality === true || quality === 'live' || quality === 'historical') {
+    } else if (quality === true || quality === 'live' || quality === 'historical' || quality === 'google_sheet' || quality === 'overlay_only') {
       return <span className="chip px-2 py-1 text-green-400 text-xs">✓ {label}</span>
     } else if (quality === 'fallback' || quality === 'sector_default' || quality === 'known_structure') {
       return <span className="chip px-2 py-1 text-yellow-400 text-xs">⚠ {label}</span>
