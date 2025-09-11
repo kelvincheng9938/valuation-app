@@ -594,12 +594,7 @@ export default function ReportContent() {
       </ErrorBoundary>
     </>
   )
-}
-
-{/* Continue with all other sections... */}
-              
-              {/* 2. Valuation Analysis */}
-              <section id="valuation" className="scroll-mt-24">
+ <section id="valuation" className="scroll-mt-24">
                 <ErrorBoundary fallback="Valuation section failed to load">
                   <div className="card p-6">
                     <h2 className="text-2xl font-bold mb-6">Valuation Analysis</h2>
