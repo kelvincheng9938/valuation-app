@@ -1,29 +1,38 @@
-// components/HomePage.js - Your ORIGINAL design with just "100+ stocks" messaging added
+// components/HomePage.js - FIXED: Your ORIGINAL design with async ticker loading for overlay support
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navigation from './Navigation'
 import { useTheme } from '@/contexts/ThemeContext'
-import { getAllStockData } from '@/lib/api'
+import { getAvailableTickers } from '@/lib/api'
 
 export default function HomePage() {
   const [inputTicker, setInputTicker] = useState('')
   const [totalStocks, setTotalStocks] = useState(100) // Default fallback
   const [isAnimated, setIsAnimated] = useState(false)
+  const [tickersLoading, setTickersLoading] = useState(true) // 🔥 NEW: Track ticker loading
   const { theme } = useTheme()
   const router = useRouter()
 
-  // Load actual stock count on mount
+  // 🔥 FIXED: Load actual stock count including overlay data
   useEffect(() => {
     loadStockCount()
   }, [])
 
   const loadStockCount = async () => {
     try {
-      const allStocks = await getAllStockData()
-      setTotalStocks(allStocks.length)
+      setTickersLoading(true)
+      console.log('🔄 Loading stock count with overlay...')
+      
+      const allTickers = await getAvailableTickers()
+      setTotalStocks(allTickers.length)
+      
+      console.log(`✅ Loaded ${allTickers.length} total stocks including overlay`)
     } catch (error) {
-      console.log('Using default stock count')
+      console.log('❌ Error loading stock count, using default:', error)
+      setTotalStocks(100) // Fallback
+    } finally {
+      setTickersLoading(false)
     }
   }
 
@@ -65,7 +74,9 @@ export default function HomePage() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
               Professional Analysis for
-              <span className="block gradient-text">{totalStocks}+ Global Stocks</span>
+              <span className="block gradient-text">
+                {tickersLoading ? 'Loading...' : `${totalStocks}+ Global Stocks`}
+              </span>
             </h1>
             
             <p className="text-lg md:text-xl mb-8 max-w-3xl mx-auto leading-relaxed">
@@ -74,23 +85,36 @@ export default function HomePage() {
               <span className="text-cyan-400 font-medium">No more guesswork.</span>
             </p>
 
-            {/* Search Form */}
+            {/* Search Form - Updated with loading state */}
             <form onSubmit={handleSearch} className="max-w-md mx-auto mb-12">
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={inputTicker}
                   onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                  placeholder={`Search ${totalStocks}+ stocks (AAPL, TSLA, 700)...`}
+                  placeholder={
+                    tickersLoading 
+                      ? "Loading stock database..." 
+                      : `Search ${totalStocks}+ stocks (AAPL, TSLA, 700, MU)...`
+                  }
                   className="flex-1 px-4 py-3 text-lg rounded-lg focus:ring-2 focus:ring-cyan-400"
+                  disabled={tickersLoading}
                 />
                 <button 
                   type="submit"
                   className="btn-primary px-6 py-3 rounded-lg text-lg font-semibold"
+                  disabled={tickersLoading}
                 >
-                  Analyze
+                  {tickersLoading ? 'Loading...' : 'Analyze'}
                 </button>
               </div>
+              {/* Show loading indicator */}
+              {tickersLoading && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-sm text-cyan-400">
+                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                  Loading stock database with overlay data...
+                </div>
+              )}
             </form>
 
             {/* Feature Cards */}
@@ -134,6 +158,7 @@ export default function HomePage() {
                 onClick={() => router.push(`/report?ticker=${stock.ticker}`)}
                 className="feature-card p-6 rounded-xl hover:scale-105 transition-all duration-300 text-left"
                 style={{ animationDelay: `${index * 100}ms` }}
+                disabled={tickersLoading}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -183,6 +208,7 @@ export default function HomePage() {
             <button 
               onClick={() => router.push('/report')}
               className="btn-primary px-8 py-4 rounded-lg text-lg font-semibold"
+              disabled={tickersLoading}
             >
               Start Free Analysis
             </button>
@@ -206,7 +232,7 @@ export default function HomePage() {
             <div className="flex items-center gap-4 mt-4 md:mt-0">
               <div className="flex items-center gap-2 text-green-400 text-sm">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Demo Mode Active
+                {tickersLoading ? 'Loading Database...' : 'Demo Mode Active'}
               </div>
             </div>
           </div>
