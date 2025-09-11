@@ -594,7 +594,39 @@ export default function ReportContent() {
       </ErrorBoundary>
     </>
   )
- <section id="valuation" className="scroll-mt-24">
+}
+
+                  {/* Company Description */}
+                  <div>
+                    <h3 className="font-semibold mb-3">About the Company</h3>
+                    <p className="leading-relaxed mb-6">
+                      {stockData?.description || 'Loading company information...'}
+                    </p>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">Market Cap</div>
+                        <div className="font-semibold">{stockData?.marketCap || 'N/A'}</div>
+                      </div>
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">Forward P/E</div>
+                        <div className="font-semibold">{stockData?.forwardPE || 'N/A'}</div>
+                      </div>
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">TTM P/E</div>
+                        <div className="font-semibold">{stockData?.ttmPE || 'N/A'}</div>
+                      </div>
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">Sector</div>
+                        <div className="font-semibold">{stockData?.sector || 'Technology'}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 2. Valuation Analysis */}
+              <section id="valuation" className="scroll-mt-24">
                 <ErrorBoundary fallback="Valuation section failed to load">
                   <div className="card p-6">
                     <h2 className="text-2xl font-bold mb-6">Valuation Analysis</h2>
@@ -910,31 +942,31 @@ export default function ReportContent() {
                 </ErrorBoundary>
               </section>
 
-              {/* Ready to Go Live Footer */}
-              {isDemoMode && (
-                <div className="mt-12">
-                  <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
-                    <div className="text-center">
-                      <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
-                      <div className="text-sm ghost mb-4">
-                        This demo showcases institutional-grade stock analysis with {availableTickers.length || '115'} stocks including Hong Kong listings. 
-                        When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
-                      </div>
-                      <div className="flex flex-wrap justify-center gap-2 text-xs">
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Forward EPS Estimates</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Dynamic P/E Bands</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Peer Comparisons</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Quality Scoring</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Real-time News</span>
-                        <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Bloomberg Data</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
             </main>
           </div>
+
+          {/* Ready to Go Live Footer */}
+          {isDemoMode && (
+            <div className="mt-12">
+              <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
+                <div className="text-center">
+                  <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
+                  <div className="text-sm ghost mb-4">
+                    This demo showcases institutional-grade stock analysis with {availableTickers.length || '115'} stocks including Hong Kong listings. 
+                    When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2 text-xs">
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Forward EPS Estimates</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Dynamic P/E Bands</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Peer Comparisons</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Quality Scoring</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Real-time News</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Bloomberg Data</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </ErrorBoundary>
