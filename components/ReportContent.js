@@ -1,4 +1,4 @@
-// components/ReportContent.js - SIMPLIFIED VERSION (Remove usage checking - middleware handles it)
+// components/ReportContent.js - FIXED: Proper async ticker loading for overlay support
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -19,6 +19,7 @@ export default function ReportContent() {
   const [activeSection, setActiveSection] = useState('overview')
   const [showAllCategories, setShowAllCategories] = useState(false)
   const [availableTickers, setAvailableTickers] = useState([])
+  const [tickersLoading, setTickersLoading] = useState(true) // 🔥 NEW: Track ticker loading state
   const { theme } = useTheme()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -26,19 +27,26 @@ export default function ReportContent() {
   // Get stock categories (static)
   const stockCategories = getStockCategories()
 
-  // Load available tickers (including overlay) on mount
+  // 🔥 FIXED: Load available tickers (including overlay) on mount
   useEffect(() => {
     loadAvailableTickers()
   }, [])
 
   const loadAvailableTickers = async () => {
     try {
+      setTickersLoading(true)
+      console.log('🔄 Loading available tickers with overlay...')
+      
       const tickers = await getAvailableTickers()
       setAvailableTickers(tickers)
+      
+      console.log(`✅ Loaded ${tickers.length} available tickers:`, tickers.slice(0, 10))
     } catch (error) {
-      console.error('Error loading available tickers:', error)
+      console.error('❌ Error loading available tickers:', error)
       // Fallback to empty array
       setAvailableTickers([])
+    } finally {
+      setTickersLoading(false)
     }
   }
 
@@ -117,13 +125,35 @@ export default function ReportContent() {
     setLoading(false)
   }
 
-  const handleSearch = (e) => {
+  // 🔥 FIXED: Better search validation using loaded tickers
+  const handleSearch = async (e) => {
     e.preventDefault()
-    if (inputTicker.trim()) {
-      // Navigate to trigger middleware check
-      router.push(`/report?ticker=${inputTicker.trim().toUpperCase()}`)
+    if (!inputTicker.trim()) return
+
+    const searchTicker = inputTicker.trim().toUpperCase()
+    
+    // Show loading if tickers are still loading
+    if (tickersLoading) {
+      console.log('⏳ Tickers still loading, proceeding with search...')
+      router.push(`/report?ticker=${searchTicker}`)
       setInputTicker('')
+      return
     }
+
+    // Check if ticker is available (if we have the list loaded)
+    if (availableTickers.length > 0 && !availableTickers.includes(searchTicker)) {
+      console.log(`❌ Ticker ${searchTicker} not found in available tickers`)
+      console.log('📋 Available tickers:', availableTickers.slice(0, 20))
+      
+      // Still try to load it (in case overlay is updated)
+      router.push(`/report?ticker=${searchTicker}`)
+      setInputTicker('')
+      return
+    }
+
+    // Navigate to trigger middleware check
+    router.push(`/report?ticker=${searchTicker}`)
+    setInputTicker('')
   }
 
   const handleStockClick = (tickerSymbol) => {
@@ -261,7 +291,7 @@ export default function ReportContent() {
                     <div>
                       <div className="text-blue-400 font-semibold">🎯 Professional Demo Mode</div>
                       <div className="text-sm text-blue-300/80">
-                        {availableTickers.length} stocks with real Bloomberg Terminal data including Hong Kong listings
+                        {tickersLoading ? 'Loading stock database...' : `${availableTickers.length} stocks with real Bloomberg Terminal data including Hong Kong listings`}
                       </div>
                     </div>
                   </div>
@@ -273,30 +303,31 @@ export default function ReportContent() {
             </div>
           )}
 
-          {/* 🔥 COMPACT SEARCH INTERFACE - Reduced spacing throughout */}
+          {/* COMPACT SEARCH INTERFACE */}
           <div className="mb-6">
             <div className="card p-4">
-              {/* Search Input - Reduced margin */}
+              {/* Search Input - Show loading state */}
               <div className="mb-4">
                 <form onSubmit={handleSearch} className="flex gap-2 max-w-md">
                   <input
                     type="text"
                     value={inputTicker}
                     onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                    placeholder="Enter ticker (e.g., AAPL, 700)"
+                    placeholder={tickersLoading ? "Loading tickers..." : "Enter ticker (e.g., AAPL, 700, MU)"}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-400 focus:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-400/20 text-base"
+                    disabled={tickersLoading}
                   />
                   <button 
                     type="submit" 
                     className="btn-primary px-4 py-2 rounded-lg text-base font-medium"
-                    disabled={loading}
+                    disabled={loading || tickersLoading}
                   >
-                    Analyze
+                    {tickersLoading ? 'Loading...' : 'Analyze'}
                   </button>
                 </form>
               </div>
 
-              {/* COMPACT STOCK CATEGORIES - Reduced spacing */}
+              {/* COMPACT STOCK CATEGORIES */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-base font-semibold">Browse by Category</h3>
@@ -304,80 +335,92 @@ export default function ReportContent() {
                     onClick={() => setShowAllCategories(!showAllCategories)}
                     className="text-cyan-400 hover:text-cyan-300 text-sm font-medium"
                   >
-                    {showAllCategories ? 'Show Less' : 'Show All'} ({availableTickers.length} stocks)
+                    {showAllCategories ? 'Show Less' : 'Show All'} ({tickersLoading ? '...' : availableTickers.length} stocks)
                   </button>
                 </div>
 
-                {Object.entries(stockCategories).map(([categoryKey, category]) => (
-                  <div key={categoryKey} className={`transition-all duration-300 ${showAllCategories ? 'block' : categoryKey === 'HK_STOCKS' || category.tickers.includes(ticker) ? 'block' : 'hidden'}`}>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div 
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: category.color }}
-                      ></div>
-                      <h4 className="font-medium text-sm" style={{ color: category.color }}>
-                        {category.label}
-                        {categoryKey === 'HK_STOCKS' && (
-                          <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded">🇭🇰 Hong Kong</span>
-                        )}
-                      </h4>
-                      <span className="text-xs ghost">({category.tickers.length})</span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-1.5">
-                      {category.tickers.map(tickerSymbol => (
-                        <button
-                          key={tickerSymbol}
-                          onClick={() => handleStockClick(tickerSymbol)}
-                          className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
-                            ticker === tickerSymbol
-                              ? 'text-white shadow-lg transform scale-105' 
-                              : 'text-white/80 hover:text-white hover:transform hover:scale-105'
-                          }`}
-                          style={{ 
-                            backgroundColor: ticker === tickerSymbol 
-                              ? category.color 
-                              : category.color + '80',
-                            boxShadow: ticker === tickerSymbol 
-                              ? `0 4px 15px ${category.color}40` 
-                              : 'none'
-                          }}
-                        >
-                          {tickerSymbol}
-                          {categoryKey === 'HK_STOCKS' && (
-                            <span className="ml-1 text-xs opacity-75">.HK</span>
-                          )}
-                        </button>
-                      ))}
+                {/* Show loading state for categories */}
+                {tickersLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                      <div className="text-sm ghost">Loading stock database with overlay data...</div>
                     </div>
                   </div>
-                ))}
-
-                {/* Popular Selections - Compact */}
-                <div className="pt-3 border-t border-white/10">
-                  <h4 className="font-medium mb-2 text-purple-400 text-sm">🔥 Popular Analysis</h4>
-                  <div className="flex flex-wrap gap-1.5">
-                    {['AAPL', 'NVDA', 'MSFT', 'GOOGL', 'META', '700', 'TSLA', 'LLY'].map(popularTicker => (
-                      <button
-                        key={popularTicker}
-                        onClick={() => handleStockClick(popularTicker)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                          ticker === popularTicker
-                            ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
-                            : 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30 hover:text-purple-300'
-                        }`}
-                      >
-                        {popularTicker}
-                        {['700', '3690', '1810', '9988'].includes(popularTicker) && (
-                          <span className="ml-1 text-xs opacity-75">🇭🇰</span>
-                        )}
-                      </button>
+                ) : (
+                  <>
+                    {Object.entries(stockCategories).map(([categoryKey, category]) => (
+                      <div key={categoryKey} className={`transition-all duration-300 ${showAllCategories ? 'block' : categoryKey === 'HK_STOCKS' || category.tickers.includes(ticker) ? 'block' : 'hidden'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div 
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: category.color }}
+                          ></div>
+                          <h4 className="font-medium text-sm" style={{ color: category.color }}>
+                            {category.label}
+                            {categoryKey === 'HK_STOCKS' && (
+                              <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded">🇭🇰 Hong Kong</span>
+                            )}
+                          </h4>
+                          <span className="text-xs ghost">({category.tickers.length})</span>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1.5">
+                          {category.tickers.map(tickerSymbol => (
+                            <button
+                              key={tickerSymbol}
+                              onClick={() => handleStockClick(tickerSymbol)}
+                              className={`px-2.5 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ${
+                                ticker === tickerSymbol
+                                  ? 'text-white shadow-lg transform scale-105' 
+                                  : 'text-white/80 hover:text-white hover:transform hover:scale-105'
+                              }`}
+                              style={{ 
+                                backgroundColor: ticker === tickerSymbol 
+                                  ? category.color 
+                                  : category.color + '80',
+                                boxShadow: ticker === tickerSymbol 
+                                  ? `0 4px 15px ${category.color}40` 
+                                  : 'none'
+                              }}
+                            >
+                              {tickerSymbol}
+                              {categoryKey === 'HK_STOCKS' && (
+                                <span className="ml-1 text-xs opacity-75">.HK</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     ))}
-                  </div>
-                </div>
+
+                    {/* Popular Selections */}
+                    <div className="pt-3 border-t border-white/10">
+                      <h4 className="font-medium mb-2 text-purple-400 text-sm">🔥 Popular Analysis</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {['AAPL', 'NVDA', 'MSFT', 'GOOGL', 'META', '700', 'TSLA', 'LLY'].map(popularTicker => (
+                          <button
+                            key={popularTicker}
+                            onClick={() => handleStockClick(popularTicker)}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                              ticker === popularTicker
+                                ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg'
+                                : 'bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-400 hover:from-purple-500/30 hover:to-pink-500/30 hover:text-purple-300'
+                            }`}
+                          >
+                            {popularTicker}
+                            {['700', '3690', '1810', '9988'].includes(popularTicker) && (
+                              <span className="ml-1 text-xs opacity-75">🇭🇰</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Data Quality Indicators - Compact */}
+              {/* Data Quality Indicators */}
               {stockData?.dataQuality && (
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -893,7 +936,7 @@ export default function ReportContent() {
                 <div className="text-center">
                   <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
                   <div className="text-sm ghost mb-4">
-                    This demo showcases institutional-grade stock analysis with {availableTickers.length} stocks including Hong Kong listings. 
+                    This demo showcases institutional-grade stock analysis with {availableTickers.length || '115+'} stocks including Hong Kong listings. 
                     When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
                   </div>
                   <div className="flex flex-wrap justify-center gap-2 text-xs">
