@@ -30,7 +30,14 @@ export default function Navigation({ isHomePage = false }) {
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="text-xl font-bold">
+            <Link href="/" className="text-xl font-bold flex items-center space-x-3">
+              {/* ValuationPro Logo */}
+              <img 
+                src="/favicon-32x32.png" 
+                alt="ValuationPro Logo" 
+                className="w-8 h-8"
+                style={{ filter: 'none' }}
+              />
               <span className="hero-title">ValuationPro</span>
             </Link>
             <div className="hidden md:flex space-x-6">
