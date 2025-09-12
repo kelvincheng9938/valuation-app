@@ -1,38 +1,29 @@
-// components/HomePage.js - FIXED: Your ORIGINAL design with async ticker loading for overlay support
+// components/HomePage.js - Updated version with your requested changes
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Navigation from './Navigation'
 import { useTheme } from '@/contexts/ThemeContext'
-import { getAvailableTickers } from '@/lib/api'
+import { getAllStockData } from '@/lib/api'
 
 export default function HomePage() {
   const [inputTicker, setInputTicker] = useState('')
-  const [totalStocks, setTotalStocks] = useState(100) // Default fallback
+  const [totalStocks, setTotalStocks] = useState(100) // Changed from 119 to 100
   const [isAnimated, setIsAnimated] = useState(false)
-  const [tickersLoading, setTickersLoading] = useState(true) // 🔥 NEW: Track ticker loading
   const { theme } = useTheme()
   const router = useRouter()
 
-  // 🔥 FIXED: Load actual stock count including overlay data
+  // Load actual stock count on mount
   useEffect(() => {
     loadStockCount()
   }, [])
 
   const loadStockCount = async () => {
     try {
-      setTickersLoading(true)
-      console.log('🔄 Loading stock count with overlay...')
-      
-      const allTickers = await getAvailableTickers()
-      setTotalStocks(allTickers.length)
-      
-      console.log(`✅ Loaded ${allTickers.length} total stocks including overlay`)
+      const allStocks = await getAllStockData()
+      setTotalStocks(allStocks.length)
     } catch (error) {
-      console.log('❌ Error loading stock count, using default:', error)
-      setTotalStocks(100) // Fallback
-    } finally {
-      setTickersLoading(false)
+      console.log('Using default stock count')
     }
   }
 
@@ -50,13 +41,13 @@ export default function HomePage() {
 
   const popularStocks = [
     { ticker: 'AAPL', name: 'Apple Inc.', price: '$230.66', change: '+1.84%', sector: 'Technology' },
-    { ticker: 'TSLA', name: 'Tesla Inc.', price: '$248.87', change: '+2.34%', sector: 'Automotive' },
+    { ticker: 'MSFT', name: 'Microsoft Corp.', price: '$502.87', change: '+1.66%', sector: 'Software' }, // Changed from TSLA to MSFT
     { ticker: 'NVDA', name: 'NVIDIA Corp.', price: '$1,247.32', change: '+3.21%', sector: 'Semiconductors' },
     { ticker: 'META', name: 'Meta Platforms', price: '$682.47', change: '+1.84%', sector: 'Social Media' },
     { ticker: '700', name: 'Tencent Holdings', price: '$320.60', change: '-0.87%', sector: 'Technology' },
-    { ticker: 'MSFT', name: 'Microsoft Corp.', price: '$502.87', change: '+1.66%', sector: 'Software' },
     { ticker: 'GOOGL', name: 'Alphabet Inc.', price: '$230.66', change: '+0.81%', sector: 'Internet' },
-    { ticker: 'AMZN', name: 'Amazon.com Inc.', price: '$218.45', change: '+1.23%', sector: 'E-commerce' }
+    { ticker: 'AMZN', name: 'Amazon.com Inc.', price: '$218.45', change: '+1.23%', sector: 'E-commerce' },
+    { ticker: 'CRM', name: 'Salesforce Inc.', price: '$350.25', change: '+2.15%', sector: 'Software' }
   ]
 
   return (
@@ -74,47 +65,31 @@ export default function HomePage() {
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
               Professional Analysis for
-              <span className="block gradient-text">
-                {tickersLoading ? 'Loading...' : `${totalStocks}+ Global Stocks`}
-              </span>
+              <span className="block gradient-text">100+ Global Stocks</span>
             </h1>
             
             <p className="text-lg md:text-xl mb-8 max-w-3xl mx-auto leading-relaxed">
               Get institutional-quality valuation analysis with dynamic P/E bands, 
-              real Bloomberg data, and comprehensive financial insights. 
-              <span className="text-cyan-400 font-medium">No more guesswork.</span>
+              real Bloomberg data, and comprehensive financial insights.
             </p>
 
-            {/* Search Form - Updated with loading state */}
+            {/* Search Form */}
             <form onSubmit={handleSearch} className="max-w-md mx-auto mb-12">
               <div className="flex gap-3">
                 <input
                   type="text"
                   value={inputTicker}
                   onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
-                  placeholder={
-                    tickersLoading 
-                      ? "Loading stock database..." 
-                      : `Search ${totalStocks}+ stocks (AAPL, TSLA, 700, MU)...`
-                  }
+                  placeholder="Search 100+ stocks (AAPL, MSFT, NVDA)..."
                   className="flex-1 px-4 py-3 text-lg rounded-lg focus:ring-2 focus:ring-cyan-400"
-                  disabled={tickersLoading}
                 />
                 <button 
                   type="submit"
                   className="btn-primary px-6 py-3 rounded-lg text-lg font-semibold"
-                  disabled={tickersLoading}
                 >
-                  {tickersLoading ? 'Loading...' : 'Analyze'}
+                  Analyze
                 </button>
               </div>
-              {/* Show loading indicator */}
-              {tickersLoading && (
-                <div className="flex items-center justify-center gap-2 mt-3 text-sm text-cyan-400">
-                  <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
-                  Loading stock database with overlay data...
-                </div>
-              )}
             </form>
 
             {/* Feature Cards */}
@@ -158,7 +133,6 @@ export default function HomePage() {
                 onClick={() => router.push(`/report?ticker=${stock.ticker}`)}
                 className="feature-card p-6 rounded-xl hover:scale-105 transition-all duration-300 text-left"
                 style={{ animationDelay: `${index * 100}ms` }}
-                disabled={tickersLoading}
               >
                 <div className="flex items-center justify-between mb-4">
                   <div>
@@ -166,7 +140,8 @@ export default function HomePage() {
                     <div className="text-sm opacity-60">{stock.name}</div>
                   </div>
                   <div className={`text-sm font-medium px-2 py-1 rounded ${
-                    stock.change.startsWith('+') ? 'text-green-400 bg-green-400/20' : 'text-red-400 bg-red-400/20'
+                    stock.change.startsWith('+') ? 
+                    'text-green-400 bg-green-400/20' : 'text-red-400 bg-red-400/20'
                   }`}>
                     {stock.change}
                   </div>
@@ -208,7 +183,6 @@ export default function HomePage() {
             <button 
               onClick={() => router.push('/report')}
               className="btn-primary px-8 py-4 rounded-lg text-lg font-semibold"
-              disabled={tickersLoading}
             >
               Start Free Analysis
             </button>
@@ -232,7 +206,7 @@ export default function HomePage() {
             <div className="flex items-center gap-4 mt-4 md:mt-0">
               <div className="flex items-center gap-2 text-green-400 text-sm">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                {tickersLoading ? 'Loading Database...' : 'Demo Mode Active'}
+                Demo Mode Active
               </div>
             </div>
           </div>
