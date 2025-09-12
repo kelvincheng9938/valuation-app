@@ -30,7 +30,7 @@ export default function Navigation({ isHomePage = false }) {
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="text-xl font-bold flex items-center space-x-3">
+            <Link href="/" className="text-xl font-bold flex items-center space-x-2">
               {/* ValuationPro Logo */}
               <img 
                 src="/favicon-32x32.png" 
@@ -132,3 +132,4 @@ export default function Navigation({ isHomePage = false }) {
     </nav>
   )
 }
+
