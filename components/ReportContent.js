@@ -1,4 +1,4 @@
-// components/ReportContent.js - FIXED: Clean version with EPS Growth Rates + No Price Change
+// components/ReportContent.js - FIXED: US stocks first + Smaller EPS Growth text
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -53,10 +53,10 @@ export default function ReportContent() {
     }
   }
 
-  // Filter tickers based on search AND sort US stocks first, HK stocks last
+  // 🔥 FIXED: Filter tickers and sort US stocks first, HK stocks last
   useEffect(() => {
     if (!searchFilter.trim()) {
-      // Sort: US stocks first, then HK stocks at bottom
+      // 🎯 FIXED: Sort US stocks first, HK stocks last
       const sortedTickers = [...availableTickers].sort((a, b) => {
         const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
         const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
@@ -66,8 +66,8 @@ export default function ReportContent() {
           return a.localeCompare(b)
         }
         
-        // US stocks (non-HK) come first
-        return aIsHK ? 1 : -1
+        // 🔥 CRITICAL FIX: US stocks (non-HK) come FIRST (return -1), HK stocks go LAST (return 1)
+        return aIsHK ? 1 : -1  // This is correct: if 'a' is HK, it goes after (1), if 'a' is US, it goes before (-1)
       })
       setFilteredTickers(sortedTickers)
     } else {
@@ -84,6 +84,7 @@ export default function ReportContent() {
           return a.localeCompare(b)
         }
         
+        // 🔥 CRITICAL FIX: Same logic - US first, HK last
         return aIsHK ? 1 : -1
       })
       
@@ -631,7 +632,7 @@ export default function ReportContent() {
                 </div>
               </section>
 
-              {/* 2. Valuation Analysis - WITH EPS GROWTH RATES */}
+              {/* 2. Valuation Analysis - WITH SMALLER EPS GROWTH RATES */}
               <section id="valuation" className="scroll-mt-24">
                 <ErrorBoundary fallback="Valuation section failed to load">
                   <div className="card p-6">
@@ -656,7 +657,7 @@ export default function ReportContent() {
                             </div>
                           </div>
                           
-                          {/* EPS Growth Rates */}
+                          {/* 🔥 FIXED: Smaller EPS Growth Rates */}
                           <div className="card p-4">
                             <h3 className="font-semibold mb-3 text-green-400">📈 EPS Growth Rates</h3>
                             <div className="space-y-3">
@@ -666,7 +667,7 @@ export default function ReportContent() {
                                     <span className="text-sm font-medium">
                                       {growth.fromYear} → {growth.toYear}
                                     </span>
-                                    <span className={`font-mono font-bold px-3 py-2 rounded text-base ${
+                                    <span className={`font-mono font-medium px-2 py-1 rounded text-sm ${
                                       growth.growthRate >= 15 ? 'bg-green-500/20 text-green-400' :
                                       growth.growthRate >= 10 ? 'bg-blue-500/20 text-blue-400' :
                                       growth.growthRate >= 0 ? 'bg-yellow-500/20 text-yellow-400' :
