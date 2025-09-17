@@ -1,4 +1,4 @@
-// components/ReportContent.js - COMPLETE: Clean scrollable stock list + all report sections
+// components/ReportContent.js - Updated with EPS Growth Rates + Removed Price Change %
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -195,7 +195,36 @@ export default function ReportContent() {
     return { position, status }
   }
 
+  // 🔥 NEW: Calculate EPS Growth Rates
+  const calculateEPSGrowthRates = () => {
+    if (!stockData?.eps?.values || stockData.eps.values.length < 2) {
+      return []
+    }
+    
+    const epsValues = stockData.eps.values
+    const years = stockData.eps.years || ['2025', '2026', '2027']
+    const growthRates = []
+    
+    for (let i = 1; i < epsValues.length; i++) {
+      const currentEPS = epsValues[i]
+      const previousEPS = epsValues[i - 1]
+      
+      if (previousEPS && previousEPS > 0) {
+        const growthRate = ((currentEPS - previousEPS) / previousEPS) * 100
+        growthRates.push({
+          year: years[i],
+          growthRate: growthRate,
+          fromYear: years[i - 1],
+          toYear: years[i]
+        })
+      }
+    }
+    
+    return growthRates
+  }
+
   const valuationInfo = getValuationPosition()
+  const epsGrowthRates = calculateEPSGrowthRates()
 
   const getDataQualityBadge = (quality, label) => {
     if (quality === 'demo' || quality === 'bloomberg_real') {
@@ -412,7 +441,7 @@ export default function ReportContent() {
             </div>
           </div>
 
-          {/* Stock Header */}
+          {/* Stock Header - 🔥 REMOVED PERCENTAGE CHANGE */}
           <header className="mb-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -441,10 +470,10 @@ export default function ReportContent() {
                     <span className="text-sm text-orange-400 ml-1">HKD</span>
                   )}
                 </div>
-                {stockData?.changePercent && (
-                  <div className={`text-lg ${stockData.changePercent > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {stockData.changePercent > 0 ? '+' : ''}{stockData.change?.toFixed(2)} 
-                    ({stockData.changePercent > 0 ? '+' : ''}{stockData.changePercent.toFixed(2)}%)
+                {/* 🔥 REMOVED: Change percentage display */}
+                {stockData?.change && (
+                  <div className={`text-lg ${stockData.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {stockData.change > 0 ? '+' : ''}{stockData.change?.toFixed(2)}
                   </div>
                 )}
                 <div className="text-xs ghost mt-1">
@@ -582,7 +611,7 @@ export default function ReportContent() {
                 </div>
               </section>
 
-              {/* 2. Valuation Analysis */}
+              {/* 2. Valuation Analysis - 🔥 ENHANCED WITH EPS GROWTH RATES */}
               <section id="valuation" className="scroll-mt-24">
                 <ErrorBoundary fallback="Valuation section failed to load">
                   <div className="card p-6">
@@ -590,10 +619,53 @@ export default function ReportContent() {
                     
                     {stockData?.eps?.values?.length > 0 && stockData?.peBands ? (
                       <>
+                        {/* EPS Data & Growth Rates Table */}
+                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                          {/* EPS Forecasts */}
+                          <div className="card p-4">
+                            <h3 className="font-semibold mb-3 text-cyan-400">📊 EPS Forecasts</h3>
+                            <div className="space-y-3">
+                              {stockData.eps.years.map((year, index) => (
+                                <div key={year} className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">{year}E</span>
+                                  <span className="font-mono font-bold">
+                                    ${stockData.eps.values[index]?.toFixed(2) || 'N/A'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* EPS Growth Rates */}
+                          <div className="card p-4">
+                            <h3 className="font-semibold mb-3 text-green-400">📈 EPS Growth Rates</h3>
+                            <div className="space-y-3">
+                              {epsGrowthRates.length > 0 ? (
+                                epsGrowthRates.map((growth, index) => (
+                                  <div key={index} className="flex items-center justify-between">
+                                    <span className="text-sm font-medium">
+                                      {growth.fromYear} → {growth.toYear}
+                                    </span>
+                                    <span className={`font-mono font-bold px-2 py-1 rounded text-xs ${
+                                      growth.growthRate >= 15 ? 'bg-green-500/20 text-green-400' :
+                                      growth.growthRate >= 10 ? 'bg-blue-500/20 text-blue-400' :
+                                      growth.growthRate >= 0 ? 'bg-yellow-500/20 text-yellow-400' :
+                                      'bg-red-500/20 text-red-400'
+                                    }`}>
+                                      {growth.growthRate > 0 ? '+' : ''}{growth.growthRate.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-sm ghost text-center py-2">
+                                  Growth rates unavailable
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="flex items-center gap-3 mb-4 flex-wrap">
-                          <span className="chip px-3 py-2">
-                            EPS: {stockData.eps.values.join(' / ')}
-                          </span>
                           <span className="chip px-3 py-2">
                             P/E Bands: {stockData.peBands.low}× / {stockData.peBands.mid}× / {stockData.peBands.high}×
                           </span>
@@ -919,6 +991,7 @@ export default function ReportContent() {
                     <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Quality Scoring</span>
                     <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Real-time News</span>
                     <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Bloomberg Data</span>
+                    <span className="chip px-3 py-1 bg-purple-500/20 text-purple-400">✓ EPS Growth Analysis</span>
                   </div>
                 </div>
               </div>
