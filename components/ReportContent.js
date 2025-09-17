@@ -53,15 +53,41 @@ export default function ReportContent() {
     }
   }
 
-  // Filter tickers based on search
+  // Filter tickers based on search AND sort US stocks first, HK stocks last
   useEffect(() => {
     if (!searchFilter.trim()) {
-      setFilteredTickers(availableTickers)
+      // Sort: US stocks first, then HK stocks at bottom
+      const sortedTickers = [...availableTickers].sort((a, b) => {
+        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
+        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
+        
+        // If both are HK or both are US, sort alphabetically
+        if (aIsHK === bIsHK) {
+          return a.localeCompare(b)
+        }
+        
+        // US stocks (non-HK) come first
+        return aIsHK ? 1 : -1
+      })
+      setFilteredTickers(sortedTickers)
     } else {
       const filtered = availableTickers.filter(ticker => 
         ticker.toLowerCase().includes(searchFilter.toLowerCase())
       )
-      setFilteredTickers(filtered)
+      
+      // Apply same sorting to filtered results
+      const sortedFiltered = filtered.sort((a, b) => {
+        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
+        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
+        
+        if (aIsHK === bIsHK) {
+          return a.localeCompare(b)
+        }
+        
+        return aIsHK ? 1 : -1
+      })
+      
+      setFilteredTickers(sortedFiltered)
     }
   }, [searchFilter, availableTickers])
 
@@ -470,12 +496,7 @@ export default function ReportContent() {
                     <span className="text-sm text-orange-400 ml-1">HKD</span>
                   )}
                 </div>
-                {/* 🔥 REMOVED: Change percentage display */}
-                {stockData?.change && (
-                  <div className={`text-lg ${stockData.change > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {stockData.change > 0 ? '+' : ''}{stockData.change?.toFixed(2)}
-                  </div>
-                )}
+                {/* 🔥 COMPLETELY REMOVED: All change displays */}
                 <div className="text-xs ghost mt-1">
                   Updated: {stockData?.lastUpdated ? new Date(stockData.lastUpdated).toLocaleTimeString() : 'Just now'}
                 </div>
@@ -636,28 +657,7 @@ export default function ReportContent() {
                             </div>
                           </div>
                           
-                          {/* EPS Growth Rates */}
-                          <div className="card p-4">
-                            <h3 className="font-semibold mb-3 text-green-400">📈 EPS Growth Rates</h3>
-                            <div className="space-y-3">
-                              {epsGrowthRates.length > 0 ? (
-                                epsGrowthRates.map((growth, index) => (
-                                  <div key={index} className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">
-                                      {growth.fromYear} → {growth.toYear}
-                                    </span>
-                                    <span className={`font-mono font-bold px-2 py-1 rounded text-xs ${
-                                      growth.growthRate >= 15 ? 'bg-green-500/20 text-green-400' :
-                                      growth.growthRate >= 10 ? 'bg-blue-500/20 text-blue-400' :
-                                      growth.growthRate >= 0 ? 'bg-yellow-500/20 text-yellow-400' :
-                                      'bg-red-500/20 text-red-400'
-                                    }`}>
-                                      {growth.growthRate > 0 ? '+' : ''}{growth.growthRate.toFixed(1)}%
-                                    </span>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="text-sm ghost text-center py-2">
+-center py-2">
                                   Growth rates unavailable
                                 </div>
                               )}
