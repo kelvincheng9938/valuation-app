@@ -1,4 +1,4 @@
-// components/ReportContent.js - FIXED: US stocks first + Smaller EPS Growth text
+// components/ReportContent.js - FIXED: Proper immutable sorting to prevent HK stocks at top
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -8,6 +8,9 @@ import { fetchStockData, getAvailableTickers } from '@/lib/api'
 import { getStockCategories } from '@/lib/demoData'
 import { ErrorBoundary } from './ErrorBoundary'
 import { useTheme } from '@/contexts/ThemeContext'
+
+// 🔥 CRITICAL: HK stock symbols for proper sorting
+const HK_STOCK_SYMBOLS = ['700', '3690', '1810', '9988'];
 
 export default function ReportContent() {
   const [stockData, setStockData] = useState(null)
@@ -41,10 +44,11 @@ export default function ReportContent() {
       
       const tickers = await getAvailableTickers()
       
-      // 🔥 CRITICAL FIX: Sort tickers immediately after loading to ensure US first, HK last
-      const sortedTickers = tickers.sort((a, b) => {
-        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
-        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
+      // 🔥 CRITICAL FIX: Create a new sorted array using spread operator to avoid mutation
+      // This ensures proper immutable sorting that React can detect
+      const sortedTickers = [...tickers].sort((a, b) => {
+        const aIsHK = HK_STOCK_SYMBOLS.includes(a)
+        const bIsHK = HK_STOCK_SYMBOLS.includes(b)
         
         // If both are HK or both are US, sort alphabetically
         if (aIsHK === bIsHK) {
@@ -55,12 +59,16 @@ export default function ReportContent() {
         return aIsHK ? 1 : -1
       })
       
-      setAvailableTickers(sortedTickers)
-      setFilteredTickers(sortedTickers)
-      
       console.log(`✅ Loaded and sorted ${sortedTickers.length} available tickers`)
       console.log('🎯 First 10 tickers:', sortedTickers.slice(0, 10))
       console.log('🎯 Last 10 tickers:', sortedTickers.slice(-10))
+      console.log('🇺🇸 US stocks count:', sortedTickers.filter(t => !HK_STOCK_SYMBOLS.includes(t)).length)
+      console.log('🇭🇰 HK stocks count:', sortedTickers.filter(t => HK_STOCK_SYMBOLS.includes(t)).length)
+      console.log('🇭🇰 HK stocks positions:', sortedTickers.map((t, i) => HK_STOCK_SYMBOLS.includes(t) ? `${t}:${i+1}` : null).filter(Boolean))
+      
+      setAvailableTickers(sortedTickers)
+      setFilteredTickers(sortedTickers)
+      
     } catch (error) {
       console.error('❌ Error loading available tickers:', error)
       setAvailableTickers([])
@@ -423,7 +431,7 @@ export default function ReportContent() {
                                 <span className="font-medium text-sm">
                                   {tickerSymbol}
                                   {/* 🔥 FIXED: Show clean HK format */}
-                                  {['700', '3690', '1810', '9988'].includes(tickerSymbol) && (
+                                  {HK_STOCK_SYMBOLS.includes(tickerSymbol) && (
                                     <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">🇭🇰</span>
                                   )}
                                 </span>
