@@ -53,24 +53,41 @@ export default function ReportContent() {
     }
   }
 
-  // 🔥 FIXED: Filter out HK stocks completely since they appear at bottom, then sort US stocks
+  // 🔥 FIXED: Keep HK stocks at bottom, show US stocks first in main list
   useEffect(() => {
-    // 🎯 REMOVE HK stocks completely from the list (they appear at the bottom anyway)
-    const hkStocks = ['700', '3690', '1810', '9988']
-    
     if (!searchFilter.trim()) {
-      // Filter out HK stocks completely, then sort US stocks alphabetically
-      const usOnlyTickers = availableTickers.filter(ticker => !hkStocks.includes(ticker))
-      const sortedTickers = usOnlyTickers.sort((a, b) => a.localeCompare(b))
+      // 🎯 SORT: US stocks first, then HK stocks at the very bottom
+      const sortedTickers = [...availableTickers].sort((a, b) => {
+        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
+        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
+        
+        // If both are HK or both are US, sort alphabetically
+        if (aIsHK === bIsHK) {
+          return a.localeCompare(b)
+        }
+        
+        // 🔥 US stocks come FIRST (-1), HK stocks go to BOTTOM (+1)
+        return aIsHK ? 1 : -1
+      })
       setFilteredTickers(sortedTickers)
     } else {
-      // Apply search filter and remove HK stocks
+      // Apply search filter to all tickers
       const filtered = availableTickers.filter(ticker => 
-        ticker.toLowerCase().includes(searchFilter.toLowerCase()) && !hkStocks.includes(ticker)
+        ticker.toLowerCase().includes(searchFilter.toLowerCase())
       )
       
-      // Sort alphabetically
-      const sortedFiltered = filtered.sort((a, b) => a.localeCompare(b))
+      // Sort with US first, HK last
+      const sortedFiltered = filtered.sort((a, b) => {
+        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
+        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
+        
+        if (aIsHK === bIsHK) {
+          return a.localeCompare(b)
+        }
+        
+        return aIsHK ? 1 : -1
+      })
+      
       setFilteredTickers(sortedFiltered)
     }
   }, [searchFilter, availableTickers])
@@ -411,10 +428,13 @@ export default function ReportContent() {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <span className="font-medium text-sm">{tickerSymbol}</span>
-                                {['700', '3690', '1810', '9988'].includes(tickerSymbol) && (
-                                  <span className="text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">🇭🇰</span>
-                                )}
+                                <span className="font-medium text-sm">
+                                  {tickerSymbol}
+                                  {/* 🔥 FIXED: Show clean HK format */}
+                                  {['700', '3690', '1810', '9988'].includes(tickerSymbol) && (
+                                    <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">🇭🇰</span>
+                                  )}
+                                </span>
                                 {ticker === tickerSymbol && (
                                   <span className="text-xs bg-cyan-400/20 text-cyan-400 px-1.5 py-0.5 rounded">Current</span>
                                 )}
