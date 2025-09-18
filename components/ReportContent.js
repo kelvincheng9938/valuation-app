@@ -53,41 +53,24 @@ export default function ReportContent() {
     }
   }
 
-  // 🔥 FIXED: Filter tickers and sort US stocks first, HK stocks last
+  // 🔥 FIXED: Filter out HK stocks completely since they appear at bottom, then sort US stocks
   useEffect(() => {
+    // 🎯 REMOVE HK stocks completely from the list (they appear at the bottom anyway)
+    const hkStocks = ['700', '3690', '1810', '9988']
+    
     if (!searchFilter.trim()) {
-      // 🎯 FIXED: Sort US stocks first, HK stocks last
-      const sortedTickers = [...availableTickers].sort((a, b) => {
-        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
-        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
-        
-        // If both are HK or both are US, sort alphabetically
-        if (aIsHK === bIsHK) {
-          return a.localeCompare(b)
-        }
-        
-        // 🔥 CRITICAL FIX: US stocks (non-HK) come FIRST (return -1), HK stocks go LAST (return 1)
-        return aIsHK ? 1 : -1  // This is correct: if 'a' is HK, it goes after (1), if 'a' is US, it goes before (-1)
-      })
+      // Filter out HK stocks completely, then sort US stocks alphabetically
+      const usOnlyTickers = availableTickers.filter(ticker => !hkStocks.includes(ticker))
+      const sortedTickers = usOnlyTickers.sort((a, b) => a.localeCompare(b))
       setFilteredTickers(sortedTickers)
     } else {
+      // Apply search filter and remove HK stocks
       const filtered = availableTickers.filter(ticker => 
-        ticker.toLowerCase().includes(searchFilter.toLowerCase())
+        ticker.toLowerCase().includes(searchFilter.toLowerCase()) && !hkStocks.includes(ticker)
       )
       
-      // Apply same sorting to filtered results
-      const sortedFiltered = filtered.sort((a, b) => {
-        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
-        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
-        
-        if (aIsHK === bIsHK) {
-          return a.localeCompare(b)
-        }
-        
-        // 🔥 CRITICAL FIX: Same logic - US first, HK last
-        return aIsHK ? 1 : -1
-      })
-      
+      // Sort alphabetically
+      const sortedFiltered = filtered.sort((a, b) => a.localeCompare(b))
       setFilteredTickers(sortedFiltered)
     }
   }, [searchFilter, availableTickers])
