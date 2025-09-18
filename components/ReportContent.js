@@ -41,17 +41,26 @@ export default function ReportContent() {
       
       const tickers = await getAvailableTickers()
       
-      // 🔥 CRITICAL FIX: Remove HK stocks from initial positions, they'll appear naturally at the end
-      const hkStocks = ['700', '3690', '1810', '9988']
-      const cleanedTickers = tickers.filter(ticker => !hkStocks.includes(ticker))
-      // Add HK stocks at the very end
-      const finalTickers = [...cleanedTickers, ...hkStocks.filter(hk => tickers.includes(hk))]
+      // 🔥 CRITICAL FIX: Sort tickers immediately after loading to ensure US first, HK last
+      const sortedTickers = tickers.sort((a, b) => {
+        const aIsHK = ['700', '3690', '1810', '9988'].includes(a)
+        const bIsHK = ['700', '3690', '1810', '9988'].includes(b)
+        
+        // If both are HK or both are US, sort alphabetically
+        if (aIsHK === bIsHK) {
+          return a.localeCompare(b)
+        }
+        
+        // 🔥 US stocks (-1) come FIRST, HK stocks (+1) go to BOTTOM
+        return aIsHK ? 1 : -1
+      })
       
-      setAvailableTickers(finalTickers)
-      setFilteredTickers(finalTickers)
+      setAvailableTickers(sortedTickers)
+      setFilteredTickers(sortedTickers)
       
-      console.log(`✅ Loaded ${finalTickers.length} available tickers`)
-      console.log('🎯 US stocks first, HK stocks at positions:', finalTickers.length - hkStocks.length + 1, 'to', finalTickers.length)
+      console.log(`✅ Loaded and sorted ${sortedTickers.length} available tickers`)
+      console.log('🎯 First 10 tickers:', sortedTickers.slice(0, 10))
+      console.log('🎯 Last 10 tickers:', sortedTickers.slice(-10))
     } catch (error) {
       console.error('❌ Error loading available tickers:', error)
       setAvailableTickers([])
@@ -61,13 +70,13 @@ export default function ReportContent() {
     }
   }
 
-  // 🔥 FIXED: Simple filtering since HK stocks are already positioned at the end
+  // 🔥 SIMPLIFIED: Just apply search filter since tickers are already sorted correctly
   useEffect(() => {
     if (!searchFilter.trim()) {
-      // No sorting needed - tickers are already arranged correctly (US first, HK at end)
+      // No filter - use all tickers (already sorted US first, HK last)
       setFilteredTickers(availableTickers)
     } else {
-      // Apply search filter to all tickers, maintain original order
+      // Apply search filter and maintain existing sort order
       const filtered = availableTickers.filter(ticker => 
         ticker.toLowerCase().includes(searchFilter.toLowerCase())
       )
