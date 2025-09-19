@@ -1,34 +1,29 @@
+// components/ErrorBoundary.js - MAKE SURE IT EXPORTS DEFAULT
 'use client'
 import { Component } from 'react'
 
-export class ErrorBoundary extends Component {
+class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false, error: null }
+    this.state = { hasError: false }
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error }
+    return { hasError: true }
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo)
+    console.error('ErrorBoundary caught an error:', error, errorInfo)
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="card p-6 text-center">
-          <div className="text-red-400 mb-2">⚠️ Something went wrong</div>
-          <div className="text-sm ghost mb-4">
-            {this.props.fallback || 'This component failed to load. Please refresh the page.'}
+        <div className="p-4 bg-red-500/10 border border-red-400/20 rounded-lg">
+          <div className="text-red-400 font-medium">Something went wrong</div>
+          <div className="text-sm text-red-300 mt-1">
+            {this.props.fallback || 'Please refresh the page'}
           </div>
-          <button 
-            className="btn btn-primary px-4 py-2"
-            onClick={() => this.setState({ hasError: false, error: null })}
-          >
-            Try Again
-          </button>
         </div>
       )
     }
@@ -37,12 +32,4 @@ export class ErrorBoundary extends Component {
   }
 }
 
-export function withErrorBoundary(Component, fallback) {
-  return function WrappedComponent(props) {
-    return (
-      <ErrorBoundary fallback={fallback}>
-        <Component {...props} />
-      </ErrorBoundary>
-    )
-  }
-}
+export default ErrorBoundary
