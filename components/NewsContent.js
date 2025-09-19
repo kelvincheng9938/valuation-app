@@ -244,7 +244,7 @@ export default function NewsContent() {
 
         {/* Market Snapshot */}
         <section className="max-w-7xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-center">Market Snapshot</h2>
+          <h2 className="text-2xl font-bold mb-6">Market Snapshot</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             
             {/* S&P 500 */}
@@ -357,7 +357,7 @@ export default function NewsContent() {
 
         {/* Upcoming Market Events */}
         {events.length > 0 && (
-          <section className="max-w-7xl mx-auto mb-8">
+          <section className="max-w-7xl mx-auto">
             <h3 className="text-xl font-semibold mb-6">Upcoming Market Events</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {events.slice(0, 6).map((event, index) => (
@@ -385,27 +385,6 @@ export default function NewsContent() {
             </div>
           </section>
         )}
-
-        {/* System Info */}
-        <section className="max-w-7xl mx-auto">
-          <div className="card p-6 bg-gradient-to-r from-cyan-500/5 to-blue-500/5 border-cyan-400/20">
-            <h3 className="font-semibold mb-3 text-cyan-400">📡 Live Data Sources</h3>
-            <div className="grid md:grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-gray-300 mb-2">📰 <strong>Google News RSS</strong></p>
-                <p className="text-gray-400">Real-time financial news from major sources, updated every minute.</p>
-              </div>
-              <div>
-                <p className="text-gray-300 mb-2">📊 <strong>Market APIs</strong></p>
-                <p className="text-gray-400">Live prices from Finnhub and Yahoo Finance with fallback protection.</p>
-              </div>
-              <div>
-                <p className="text-gray-300 mb-2">📅 <strong>Dynamic Events</strong></p>
-                <p className="text-gray-400">Upcoming economic events automatically generated and updated.</p>
-              </div>
-            </div>
-          </div>
-        </section>
 
       </div>
     </>
