@@ -137,6 +137,21 @@ export default function NewsContent() {
   const breakingNews = news.filter(article => article.isBreaking)
   const generalNews = news.filter(article => !article.isBreaking)
 
+  // Helper function to check if summary is too similar to headline
+  const isSummaryUseful = (headline, summary) => {
+    if (!summary || summary.length < 20) return false
+    
+    // Convert to lowercase for comparison
+    const cleanHeadline = headline.toLowerCase().replace(/[^a-z0-9\s]/g, '')
+    const cleanSummary = summary.toLowerCase().replace(/[^a-z0-9\s]/g, '')
+    
+    // If summary is too similar to headline, don't show it
+    const similarity = cleanSummary.includes(cleanHeadline.substring(0, 30)) || 
+                      cleanHeadline.includes(cleanSummary.substring(0, 30))
+    
+    return !similarity && cleanSummary.length > cleanHeadline.length + 10
+  }
+
   if (loading) {
     return (
       <>
@@ -224,9 +239,11 @@ export default function NewsContent() {
                     <h4 className="font-semibold mb-2 text-sm leading-snug line-clamp-2">
                       {article.headline}
                     </h4>
-                    <p className="text-xs text-gray-400 line-clamp-2 mb-3">
-                      {article.summary}
-                    </p>
+                    {isSummaryUseful(article.headline, article.summary) && (
+                      <p className="text-xs text-gray-400 line-clamp-2 mb-3">
+                        {article.summary}
+                      </p>
+                    )}
                     <a 
                       href={article.url}
                       target="_blank"
@@ -256,9 +273,6 @@ export default function NewsContent() {
               <div className={`text-sm font-medium ${getChangeColor(marketData?.spy?.change)}`}>
                 {formatChange(marketData?.spy?.change)}
               </div>
-              {marketData?.spy?.source && (
-                <div className="text-xs text-gray-500 mt-1">{marketData.spy.source}</div>
-              )}
             </div>
 
             {/* NASDAQ */}
@@ -270,9 +284,6 @@ export default function NewsContent() {
               <div className={`text-sm font-medium ${getChangeColor(marketData?.nasdaq?.change)}`}>
                 {formatChange(marketData?.nasdaq?.change)}
               </div>
-              {marketData?.nasdaq?.source && (
-                <div className="text-xs text-gray-500 mt-1">{marketData.nasdaq.source}</div>
-              )}
             </div>
 
             {/* Bitcoin */}
@@ -284,9 +295,6 @@ export default function NewsContent() {
               <div className={`text-sm font-medium ${getChangeColor(marketData?.btc?.change)}`}>
                 {formatChange(marketData?.btc?.change)}
               </div>
-              {marketData?.btc?.source && (
-                <div className="text-xs text-gray-500 mt-1">{marketData.btc.source}</div>
-              )}
             </div>
 
             {/* Gold */}
@@ -298,9 +306,6 @@ export default function NewsContent() {
               <div className={`text-sm font-medium ${getChangeColor(marketData?.gold?.change)}`}>
                 {formatChange(marketData?.gold?.change)}
               </div>
-              {marketData?.gold?.source && (
-                <div className="text-xs text-gray-500 mt-1">{marketData.gold.source}</div>
-              )}
             </div>
 
             {/* Oil */}
@@ -312,9 +317,6 @@ export default function NewsContent() {
               <div className={`text-sm font-medium ${getChangeColor(marketData?.oil?.change)}`}>
                 {formatChange(marketData?.oil?.change)}
               </div>
-              {marketData?.oil?.source && (
-                <div className="text-xs text-gray-500 mt-1">{marketData.oil.source}</div>
-              )}
             </div>
 
           </div>
@@ -334,9 +336,11 @@ export default function NewsContent() {
                   <h4 className="font-semibold mb-2 line-clamp-2 leading-snug">
                     {article.headline}
                   </h4>
-                  <p className="text-sm text-gray-400 line-clamp-3 mb-4">
-                    {article.summary}
-                  </p>
+                  {isSummaryUseful(article.headline, article.summary) && (
+                    <p className="text-sm text-gray-400 line-clamp-3 mb-4">
+                      {article.summary}
+                    </p>
+                  )}
                   <a 
                     href={article.url}
                     target="_blank"
