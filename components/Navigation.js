@@ -120,6 +120,12 @@ export default function Navigation({ isHomePage = false }) {
                 </button>
               )}
             </div>
+
+            {/* API Status */}
+            <div className="hidden lg:flex items-center space-x-4">
+              <span className="text-xs ghost">API: Connected</span>
+              <div className="w-2 h-2 bg-green-500 rounded-full market-badge"></div>
+            </div>
           </div>
         </div>
       </div>
