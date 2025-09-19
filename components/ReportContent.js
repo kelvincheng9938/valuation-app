@@ -1,117 +1,108 @@
-// components/ReportContent.js - FIXED for build errors
+// components/ReportContent.js - FIXED: Proper immutable sorting to prevent HK stocks at top
 'use client'
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Navigation from '@/components/Navigation'
+import Navigation from './Navigation'
+import { initCharts, updateChartsTheme } from './ChartComponents'
 import { fetchStockData, getAvailableTickers } from '@/lib/api'
-import * as echarts from 'echarts'
+import { getStockCategories } from '@/lib/demoData'
+import { ErrorBoundary } from './ErrorBoundary'
+import { useTheme } from '@/contexts/ThemeContext'
 
-// Simple ErrorBoundary fallback component
-function SimpleErrorBoundary({ children, fallback = "Something went wrong" }) {
-  const [hasError, setHasError] = useState(false)
-  
-  if (hasError) {
-    return (
-      <div className="p-4 bg-red-500/10 border border-red-400/20 rounded-lg">
-        <div className="text-red-400 font-medium">{fallback}</div>
-      </div>
-    )
-  }
-  
-  return children
-}
+// 🔥 CRITICAL: HK stock symbols for proper sorting
+const HK_STOCK_SYMBOLS = ['700', '3690', '1810', '9988'];
 
-export default function ReportContent({ initialTicker = '' }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  
-  // Existing state
+export default function ReportContent() {
   const [stockData, setStockData] = useState(null)
+  const [ticker, setTicker] = useState('AAPL')
+  const [inputTicker, setInputTicker] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [ticker, setTicker] = useState(initialTicker)
-  const [inputTicker, setInputTicker] = useState('')
+  const [updateKey, setUpdateKey] = useState(0)
+  const [activeSection, setActiveSection] = useState('overview')
   const [showStockList, setShowStockList] = useState(false)
   const [availableTickers, setAvailableTickers] = useState([])
-  const [activeSection, setActiveSection] = useState('overview')
-  const [updateKey, setUpdateKey] = useState(0)
-  const [theme, setTheme] = useState('dark')
-  
-  // NEW: Company news state for auto-refresh
-  const [companyNews, setCompanyNews] = useState([])
-  const [newsLoading, setNewsLoading] = useState(false)
-  const [newsError, setNewsError] = useState(null)
-  const [newsLastUpdated, setNewsLastUpdated] = useState(null)
-  const [autoRefreshNews, setAutoRefreshNews] = useState(true)
-  const newsIntervalRef = useRef(null)
+  const [tickersLoading, setTickersLoading] = useState(true)
+  const [filteredTickers, setFilteredTickers] = useState([])
+  const [searchFilter, setSearchFilter] = useState('')
+  const { theme } = useTheme()
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  // Chart refs
-  const radarChartRef = useRef(null)
-  const valuationChartRef = useRef(null)
-  const peersChartRef = useRef(null)
-  const segmentChartRef = useRef(null)
+  // Get stock categories (static)
+  const stockCategories = getStockCategories()
 
-  // Load available tickers
+  // Load available tickers (including overlay) on mount
   useEffect(() => {
-    const loadTickers = async () => {
-      try {
-        const tickers = await getAvailableTickers()
-        setAvailableTickers(tickers)
-      } catch (error) {
-        console.error('Error loading available tickers:', error)
-      }
-    }
-    loadTickers()
+    loadAvailableTickers()
   }, [])
 
-  // Initial load from URL
+  const loadAvailableTickers = async () => {
+    try {
+      setTickersLoading(true)
+      console.log('🔄 Loading available tickers with overlay...')
+      
+      const tickers = await getAvailableTickers()
+      
+      // 🔥 CRITICAL FIX: Create a new sorted array using spread operator to avoid mutation
+      // This ensures proper immutable sorting that React can detect
+      const sortedTickers = [...tickers].sort((a, b) => {
+        const aIsHK = HK_STOCK_SYMBOLS.includes(a)
+        const bIsHK = HK_STOCK_SYMBOLS.includes(b)
+        
+        // If both are HK or both are US, sort alphabetically
+        if (aIsHK === bIsHK) {
+          return a.localeCompare(b)
+        }
+        
+        // 🔥 US stocks (-1) come FIRST, HK stocks (+1) go to BOTTOM
+        return aIsHK ? 1 : -1
+      })
+      
+      console.log(`✅ Loaded and sorted ${sortedTickers.length} available tickers`)
+      console.log('🎯 First 10 tickers:', sortedTickers.slice(0, 10))
+      console.log('🎯 Last 10 tickers:', sortedTickers.slice(-10))
+      console.log('🇺🇸 US stocks count:', sortedTickers.filter(t => !HK_STOCK_SYMBOLS.includes(t)).length)
+      console.log('🇭🇰 HK stocks count:', sortedTickers.filter(t => HK_STOCK_SYMBOLS.includes(t)).length)
+      console.log('🇭🇰 HK stocks positions:', sortedTickers.map((t, i) => HK_STOCK_SYMBOLS.includes(t) ? `${t}:${i+1}` : null).filter(Boolean))
+      
+      setAvailableTickers(sortedTickers)
+      setFilteredTickers(sortedTickers)
+      
+    } catch (error) {
+      console.error('❌ Error loading available tickers:', error)
+      setAvailableTickers([])
+      setFilteredTickers([])
+    } finally {
+      setTickersLoading(false)
+    }
+  }
+
+  // 🔥 SIMPLIFIED: Just apply search filter since tickers are already sorted correctly
+  useEffect(() => {
+    if (!searchFilter.trim()) {
+      // No filter - use all tickers (already sorted US first, HK last)
+      setFilteredTickers(availableTickers)
+    } else {
+      // Apply search filter and maintain existing sort order
+      const filtered = availableTickers.filter(ticker => 
+        ticker.toLowerCase().includes(searchFilter.toLowerCase())
+      )
+      setFilteredTickers(filtered)
+    }
+  }, [searchFilter, availableTickers])
+
+  // Load initial stock or from URL parameter
   useEffect(() => {
     const urlTicker = searchParams.get('ticker')
     if (urlTicker && urlTicker !== ticker) {
-      setTicker(urlTicker.toUpperCase())
-      loadStockData(urlTicker.toUpperCase())
-    } else if (initialTicker && !stockData) {
-      loadStockData(initialTicker.toUpperCase())
+      loadStockData(urlTicker)
+    } else if (!urlTicker) {
+      loadStockData('AAPL')
     }
   }, [searchParams])
 
-  // NEW: Auto-refresh company news
-  useEffect(() => {
-    if (ticker && autoRefreshNews) {
-      // Fetch immediately
-      fetchCompanyNews(ticker)
-      
-      // Set up auto-refresh every 5 minutes
-      if (newsIntervalRef.current) {
-        clearInterval(newsIntervalRef.current)
-      }
-      
-      newsIntervalRef.current = setInterval(() => {
-        if (ticker) {
-          console.log(`🔄 Auto-refreshing company news for ${ticker}`)
-          fetchCompanyNews(ticker, true) // Silent refresh
-        }
-      }, 5 * 60 * 1000) // 5 minutes
-      
-      // Cleanup
-      return () => {
-        if (newsIntervalRef.current) {
-          clearInterval(newsIntervalRef.current)
-        }
-      }
-    }
-  }, [ticker, autoRefreshNews])
-
-  // Chart initialization
-  useEffect(() => {
-    if (stockData && !loading) {
-      setTimeout(() => {
-        initCharts(stockData)
-      }, 150)
-    }
-  }, [stockData, updateKey])
-
-  // Theme changes
+  // Update charts when theme changes
   useEffect(() => {
     if (stockData) {
       setTimeout(() => {
@@ -120,10 +111,8 @@ export default function ReportContent({ initialTicker = '' }) {
     }
   }, [theme])
 
-  // Scroll spy for active section - PROTECTED from server-side rendering
+  // Scroll spy for active section
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
     const handleScroll = () => {
       const sections = ['overview', 'valuation', 'quality', 'peers', 'analysis', 'news']
       const scrollPosition = window.scrollY + 100
@@ -151,12 +140,10 @@ export default function ReportContent({ initialTicker = '' }) {
     try {
       console.log(`Loading data for ${symbol}`)
       
-      // Update URL without navigation - PROTECTED from server-side rendering
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location)
-        url.searchParams.set('ticker', symbol.toUpperCase())
-        window.history.pushState({}, '', url)
-      }
+      // Update URL without navigation (for sharing/bookmarking)
+      const url = new URL(window.location)
+      url.searchParams.set('ticker', symbol.toUpperCase())
+      window.history.pushState({}, '', url)
       
       const data = await fetchStockData(symbol.toUpperCase())
       setStockData(data)
@@ -180,54 +167,6 @@ export default function ReportContent({ initialTicker = '' }) {
     setLoading(false)
   }
 
-  // NEW: Company news functions
-  const fetchCompanyNews = async (symbol, silent = false) => {
-    if (!symbol) return
-    
-    if (!silent) {
-      setNewsLoading(true)
-      setNewsError(null)
-    }
-    
-    try {
-      console.log(`🔍 Fetching company news for ${symbol}`)
-      
-      const response = await fetch(`/api/news/company?symbol=${symbol}`, {
-        cache: 'no-store'
-      })
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch news: ${response.status}`)
-      }
-      
-      const data = await response.json()
-      
-      if (data.news && Array.isArray(data.news)) {
-        setCompanyNews(data.news)
-        setNewsLastUpdated(data.lastUpdated)
-        console.log(`✅ Company news loaded: ${data.news.length} articles`)
-      } else {
-        console.warn('⚠️ No news data available:', data.message)
-        setCompanyNews([])
-      }
-      
-    } catch (error) {
-      console.error('❌ Error fetching company news:', error)
-      setNewsError(error.message)
-      setCompanyNews([])
-    } finally {
-      if (!silent) {
-        setNewsLoading(false)
-      }
-    }
-  }
-
-  const handleManualNewsRefresh = () => {
-    if (ticker) {
-      fetchCompanyNews(ticker)
-    }
-  }
-
   const handleSearch = async (e) => {
     e.preventDefault()
     if (!inputTicker.trim()) return
@@ -245,8 +184,6 @@ export default function ReportContent({ initialTicker = '' }) {
   }
 
   const scrollToSection = (sectionId) => {
-    if (typeof window === 'undefined') return
-    
     const element = document.getElementById(sectionId)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
@@ -258,570 +195,721 @@ export default function ReportContent({ initialTicker = '' }) {
 
   // Calculate valuation position
   const getValuationPosition = () => {
-    if (!stockData?.eps?.values?.length || !stockData?.peBands || !stockData?.price) {
-      return null
+    if (!stockData?.eps?.values?.[0] || !stockData?.peBands || !stockData?.price) {
+      return { position: 50, status: 'Fair Value' }
     }
 
-    const nextYearEPS = stockData.eps.values[0]
-    if (!nextYearEPS || nextYearEPS <= 0) return null
-
-    const currentPrice = parseFloat(stockData.price)
+    const currentPE = stockData.price / stockData.eps.values[0]
     const { low, mid, high } = stockData.peBands
 
-    const lowPrice = nextYearEPS * low
-    const midPrice = nextYearEPS * mid
-    const highPrice = nextYearEPS * high
+    let position = 50
+    let status = 'Fair Value'
 
-    if (currentPrice <= lowPrice) return 'undervalued'
-    if (currentPrice <= midPrice) return 'fair'
-    if (currentPrice <= highPrice) return 'expensive'
-    return 'overvalued'
+    if (currentPE <= low) {
+      position = 15
+      status = 'Undervalued'
+    } else if (currentPE <= mid) {
+      position = 35
+      status = 'Fair Value'
+    } else if (currentPE <= high) {
+      position = 65
+      status = 'Fair Value'
+    } else {
+      position = 85
+      status = 'Overvalued'
+    }
+
+    return { position, status }
   }
 
-  const initCharts = async (data) => {
-    if (!data) return
-
-    try {
-      // Radar Chart
-      if (radarChartRef.current) {
-        const radarChart = echarts.init(radarChartRef.current)
-        const radarOption = {
-          backgroundColor: 'transparent',
-          radar: {
-            indicator: [
-              { name: 'Value', max: 10 },
-              { name: 'Growth', max: 10 },
-              { name: 'Profitability', max: 10 },
-              { name: 'Momentum', max: 10 }
-            ],
-            radius: '70%',
-            axisName: {
-              color: '#9ca3af',
-              fontSize: 12
-            },
-            axisLine: { lineStyle: { color: '#374151' } },
-            splitLine: { lineStyle: { color: '#374151' } },
-            splitArea: { show: false }
-          },
-          series: [{
-            type: 'radar',
-            data: [{
-              value: [data.scores.value, data.scores.growth, data.scores.profit, data.scores.momentum],
-              name: data.ticker,
-              itemStyle: { color: '#3b82f6' },
-              areaStyle: { color: 'rgba(59, 130, 246, 0.1)' },
-              lineStyle: { color: '#3b82f6', width: 2 }
-            }]
-          }]
-        }
-        radarChart.setOption(radarOption, { notMerge: true })
+  // Calculate EPS Growth Rates
+  const calculateEPSGrowthRates = () => {
+    if (!stockData?.eps?.values || stockData.eps.values.length < 2) {
+      return []
+    }
+    
+    const epsValues = stockData.eps.values
+    const years = stockData.eps.years || ['2025', '2026', '2027']
+    const growthRates = []
+    
+    for (let i = 1; i < epsValues.length; i++) {
+      const currentEPS = epsValues[i]
+      const previousEPS = epsValues[i - 1]
+      
+      if (previousEPS && previousEPS > 0) {
+        const growthRate = ((currentEPS - previousEPS) / previousEPS) * 100
+        growthRates.push({
+          year: years[i],
+          growthRate: growthRate,
+          fromYear: years[i - 1],
+          toYear: years[i]
+        })
       }
+    }
+    
+    return growthRates
+  }
 
-      // Valuation Chart
-      if (valuationChartRef.current && data.eps?.values?.length) {
-        const valuationChart = echarts.init(valuationChartRef.current)
-        const years = data.eps.years
-        const epsValues = data.eps.values
-        const { low, mid, high } = data.peBands
+  const valuationInfo = getValuationPosition()
+  const epsGrowthRates = calculateEPSGrowthRates()
 
-        const lowPrices = epsValues.map(eps => eps * low)
-        const midPrices = epsValues.map(eps => eps * mid)
-        const highPrices = epsValues.map(eps => eps * high)
-        const currentPrice = parseFloat(data.price)
-
-        const valuationOption = {
-          backgroundColor: 'transparent',
-          tooltip: {
-            trigger: 'axis',
-            backgroundColor: '#1f2937',
-            borderColor: '#374151',
-            textStyle: { color: '#f3f4f6' }
-          },
-          legend: {
-            data: ['Low P/E', 'Fair P/E', 'High P/E', 'Current Price'],
-            textStyle: { color: '#9ca3af' },
-            top: 20
-          },
-          grid: {
-            left: '3%',
-            right: '4%',
-            bottom: '3%',
-            containLabel: true
-          },
-          xAxis: {
-            type: 'category',
-            data: years,
-            axisLine: { lineStyle: { color: '#374151' } },
-            axisLabel: { color: '#9ca3af' }
-          },
-          yAxis: {
-            type: 'value',
-            axisLine: { lineStyle: { color: '#374151' } },
-            axisLabel: { color: '#9ca3af' },
-            splitLine: { lineStyle: { color: '#374151' } }
-          },
-          series: [
-            {
-              name: 'Low P/E',
-              type: 'bar',
-              data: lowPrices,
-              itemStyle: { color: '#ef4444' }
-            },
-            {
-              name: 'Fair P/E',
-              type: 'bar',
-              data: midPrices,
-              itemStyle: { color: '#f59e0b' }
-            },
-            {
-              name: 'High P/E',
-              type: 'bar',
-              data: highPrices,
-              itemStyle: { color: '#10b981' }
-            },
-            {
-              name: 'Current Price',
-              type: 'line',
-              data: years.map(() => currentPrice),
-              lineStyle: { color: '#3b82f6', width: 3 },
-              itemStyle: { color: '#3b82f6' }
-            }
-          ]
-        }
-        valuationChart.setOption(valuationOption, { notMerge: true })
-      }
-
-      // Peers Bubble Chart
-      if (peersChartRef.current && data.peers?.length) {
-        const peersChart = echarts.init(peersChartRef.current)
-        const peersOption = {
-          backgroundColor: 'transparent',
-          tooltip: {
-            trigger: 'item',
-            formatter: '{b}<br/>Market Cap: ${c[0]}B<br/>Forward P/E: {c[1]}x',
-            backgroundColor: '#1f2937',
-            borderColor: '#374151',
-            textStyle: { color: '#f3f4f6' }
-          },
-          xAxis: {
-            name: 'Market Cap ($B)',
-            nameLocation: 'middle',
-            nameGap: 30,
-            nameTextStyle: { color: '#9ca3af' },
-            axisLabel: { color: '#9ca3af' },
-            axisLine: { lineStyle: { color: '#374151' } },
-            splitLine: { lineStyle: { color: '#374151' } }
-          },
-          yAxis: {
-            name: 'Forward P/E',
-            nameLocation: 'middle',
-            nameGap: 40,
-            nameTextStyle: { color: '#9ca3af' },
-            axisLabel: { color: '#9ca3af' },
-            axisLine: { lineStyle: { color: '#374151' } },
-            splitLine: { lineStyle: { color: '#374151' } }
-          },
-          series: [{
-            type: 'scatter',
-            data: data.peers.map(peer => ({
-              value: [peer[0], peer[1], peer[2]],
-              name: peer[3]
-            })),
-            symbolSize: function(data) {
-              return Math.sqrt(data[2]) * 3
-            },
-            itemStyle: {
-              color: function(params) {
-                return params.name === data.ticker ? '#3b82f6' : '#6b7280'
-              }
-            }
-          }]
-        }
-        peersChart.setOption(peersOption, { notMerge: true })
-      }
-
-      // Segment Pie Chart
-      if (segmentChartRef.current && data.segments?.length) {
-        const segmentChart = echarts.init(segmentChartRef.current)
-        const segmentOption = {
-          backgroundColor: 'transparent',
-          tooltip: {
-            trigger: 'item',
-            formatter: '{b}: {c}% ({d}%)',
-            backgroundColor: '#1f2937',
-            borderColor: '#374151',
-            textStyle: { color: '#f3f4f6' }
-          },
-          series: [{
-            type: 'pie',
-            radius: ['40%', '70%'],
-            data: data.segments,
-            emphasis: {
-              itemStyle: {
-                shadowBlur: 10,
-                shadowOffsetX: 0,
-                shadowColor: 'rgba(0, 0, 0, 0.5)'
-              }
-            },
-            label: {
-              color: '#9ca3af',
-              fontSize: 12
-            }
-          }]
-        }
-        segmentChart.setOption(segmentOption, { notMerge: true })
-      }
-
-    } catch (error) {
-      console.error('Chart initialization error:', error)
+  const getDataQualityBadge = (quality, label) => {
+    if (quality === 'demo' || quality === 'bloomberg_real') {
+      return <span className="chip px-2 py-1 text-blue-400 text-xs">📊 {label}</span>
+    } else if (quality === true || quality === 'live' || quality === 'historical' || quality === 'google_sheet' || quality === 'overlay_only') {
+      return <span className="chip px-2 py-1 text-green-400 text-xs">✓ {label}</span>
+    } else if (quality === 'fallback' || quality === 'sector_default' || quality === 'known_structure') {
+      return <span className="chip px-2 py-1 text-yellow-400 text-xs">⚠ {label}</span>
+    } else {
+      return <span className="chip px-2 py-1 text-red-400 text-xs">✗ {label}</span>
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
+      <>
         <Navigation />
-        <div className="flex items-center justify-center min-h-[80vh]">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <h2 className="text-2xl font-bold text-white mb-2">Loading Stock Analysis</h2>
-            <p className="text-gray-400">Fetching latest data for {ticker}...</p>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="card p-8 text-center">
+            <div className="text-lg">Loading {ticker} analysis...</div>
+            <div className="mt-4">
+              <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            </div>
+            <div className="text-sm ghost mt-2">
+              {isDemoMode ? 'Loading comprehensive demo analysis...' : 'Fetching live market data from APIs...'}
+            </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
+      <>
         <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <div className="text-red-400 text-6xl mb-4">⚠️</div>
-            <h2 className="text-3xl font-bold text-white mb-4">Analysis Unavailable</h2>
-            <p className="text-gray-400 mb-6 max-w-md mx-auto">{error}</p>
-            <button 
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.location.reload()
-                }
-              }}
-              className="btn-primary px-6 py-3 rounded-lg font-medium"
-            >
-              Try Again
-            </button>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="card p-8 text-center">
+            <div className="text-red-400 text-4xl mb-4">⚠️</div>
+            <div className="text-xl font-bold mb-4">Unable to Load Analysis</div>
+            <div className="text-sm ghost mb-6">{error}</div>
+            <div className="space-y-3">
+              <button
+                onClick={() => loadStockData(ticker)}
+                className="btn-primary px-6 py-2 rounded-lg mr-3"
+              >
+                Retry {ticker}
+              </button>
+              <button
+                onClick={() => {
+                  setError(null)
+                  setInputTicker('')
+                }}
+                className="btn px-6 py-2 rounded-lg"
+              >
+                Try Different Symbol
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </>
     )
   }
 
-  if (!stockData) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center py-20">
-            <h2 className="text-3xl font-bold text-white mb-4">Enter a Stock Symbol</h2>
-            <p className="text-gray-400 mb-8">Search for any stock to get detailed analysis</p>
-            <form onSubmit={handleSearch} className="max-w-md mx-auto">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={inputTicker}
-                  onChange={(e) => setInputTicker(e.target.value)}
-                  placeholder="Enter ticker (e.g., AAPL)"
-                  className="input flex-1"
-                />
-                <button type="submit" className="btn-primary px-6">
-                  Analyze
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const valuationPosition = getValuationPosition()
+  const navigationItems = [
+    { id: 'overview', label: 'Company Overview', icon: '🏢' },
+    { id: 'valuation', label: 'Valuation', icon: '💰' },
+    { id: 'quality', label: 'Quality Analysis', icon: '⭐' },
+    { id: 'peers', label: 'Peer Comparison', icon: '📊' },
+    { id: 'analysis', label: 'Investment Analysis', icon: '🎯' },
+    { id: 'news', label: 'Latest News', icon: '📰' }
+  ]
 
   return (
     <>
       <Navigation />
-      
-      <SimpleErrorBoundary>
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
+      <ErrorBoundary fallback="Report failed to load. Please refresh the page.">
+        <div className="max-w-7xl mx-auto px-4 py-6" key={updateKey}>
           
-          {/* Header */}
-          <div className="border-b border-gray-800 bg-gray-900/50">
-            <div className="container mx-auto px-4 py-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <h1 className="text-3xl font-bold text-white">
-                    {stockData.name}
-                    <span className="text-xl text-gray-400 ml-2">({stockData.ticker})</span>
-                  </h1>
-                  <div className={`text-2xl font-bold ${
-                    stockData.changePercent >= 0 ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    ${stockData.price}
-                    <span className="text-lg ml-2">
-                      {stockData.changePercent >= 0 ? '+' : ''}{stockData.changePercent}%
-                    </span>
+          {/* Demo Mode Header Banner */}
+          {isDemoMode && (
+            <div className="mb-6">
+              <div className="bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-400/30 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                    <div>
+                      <div className="text-blue-400 font-semibold">🎯 Professional Demo Mode</div>
+                      <div className="text-sm text-blue-300/80">
+                        {tickersLoading ? 'Loading stock database...' : `${availableTickers.length} stocks with real Bloomberg Terminal data including Hong Kong listings`}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="chip px-3 py-2 bg-blue-500/20">
+                    <span className="text-blue-400 font-medium">Bloomberg Data</span>
                   </div>
                 </div>
-                
-                {/* Search */}
-                <form onSubmit={handleSearch} className="flex gap-2">
+              </div>
+            </div>
+          )}
+
+          {/* Clean Search Interface */}
+          <div className="mb-4">
+            <div className="card p-3">
+              {/* Search Input */}
+              <div className="mb-3">
+                <form onSubmit={handleSearch} className="flex gap-2 max-w-sm">
                   <input
                     type="text"
                     value={inputTicker}
-                    onChange={(e) => setInputTicker(e.target.value)}
-                    placeholder="Enter ticker..."
-                    className="input w-40"
+                    onChange={(e) => setInputTicker(e.target.value.toUpperCase())}
+                    placeholder={tickersLoading ? "Loading..." : "Enter ticker (AAPL, 700, MU)"}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
+                    disabled={tickersLoading}
                   />
-                  <button type="submit" className="btn-primary px-4">
-                    Analyze
+                  <button 
+                    type="submit" 
+                    className="btn-primary px-4 py-2 rounded text-sm font-medium"
+                    disabled={loading || tickersLoading}
+                  >
+                    {tickersLoading ? 'Loading...' : 'Analyze'}
                   </button>
                 </form>
               </div>
+
+              {/* Stock List Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Browse Stocks</span>
+                <button
+                  onClick={() => setShowStockList(!showStockList)}
+                  className="btn-secondary px-4 py-2 rounded text-sm font-medium"
+                  disabled={tickersLoading}
+                >
+                  {showStockList ? 'Hide List' : `Show ${tickersLoading ? '...' : availableTickers.length} Stocks`}
+                </button>
+              </div>
+
+              {/* Scrollable Stock List */}
+              {showStockList && (
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  {/* Search Filter */}
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      placeholder="Filter stocks... (e.g., AAPL, Tesla)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm placeholder-gray-400 focus:border-cyan-400 focus:outline-none"
+                    />
+                  </div>
+
+                  {/* Stock List */}
+                  <div className="max-h-80 overflow-y-auto border border-white/10 rounded-lg">
+                    {tickersLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span className="text-sm ghost">Loading stocks...</span>
+                        </div>
+                      </div>
+                    ) : filteredTickers.length === 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-sm ghost">No stocks found matching "{searchFilter}"</div>
+                      </div>
+                    ) : (
+                      <div className="space-y-0">
+                        {filteredTickers.map((tickerSymbol, index) => (
+                          <button
+                            key={tickerSymbol}
+                            onClick={() => handleStockClick(tickerSymbol)}
+                            className={`w-full text-left px-4 py-3 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0 ${
+                              ticker === tickerSymbol ? 'bg-cyan-400/10 text-cyan-400' : 'text-white'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <span className="font-medium text-sm">
+                                  {tickerSymbol}
+                                  {/* 🔥 FIXED: Show clean HK format */}
+                                  {HK_STOCK_SYMBOLS.includes(tickerSymbol) && (
+                                    <span className="ml-2 text-xs bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded">🇭🇰</span>
+                                  )}
+                                </span>
+                                {ticker === tickerSymbol && (
+                                  <span className="text-xs bg-cyan-400/20 text-cyan-400 px-1.5 py-0.5 rounded">Current</span>
+                                )}
+                              </div>
+                              <div className="text-xs ghost">#{index + 1}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* List Summary */}
+                  <div className="mt-2 text-center">
+                    <span className="text-xs ghost">
+                      Showing {filteredTickers.length} of {availableTickers.length} stocks
+                      {searchFilter && ` matching "${searchFilter}"`}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Data Quality */}
+              {stockData?.dataQuality && (
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="ghost text-xs">Sources:</span>
+                    {getDataQualityBadge(stockData.dataQuality.estimates, 'EPS')}
+                    {getDataQualityBadge(stockData.dataQuality.peHistory, 'P/E')}
+                    {getDataQualityBadge(stockData.dataQuality.peers, 'Peers')}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Navigation Dots */}
-          <div className="fixed right-8 top-1/2 transform -translate-y-1/2 z-50 space-y-3">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'analysis', label: 'Analysis' },
-              { id: 'peers', label: 'Peers' },
-              { id: 'news', label: 'News' }
-            ].map((section) => (
-              <button
-                key={section.id}
-                onClick={() => scrollToSection(section.id)}
-                className={`block w-3 h-3 rounded-full transition-all duration-300 ${
-                  activeSection === section.id
-                    ? 'bg-cyan-400 scale-125'
-                    : 'bg-gray-600 hover:bg-gray-500'
-                }`}
-                title={section.label}
-              />
-            ))}
-          </div>
+          {/* Stock Header - NO CHANGE DISPLAY */}
+          <header className="mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white font-bold text-xl">
+                  {ticker.charAt(0)}
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold mb-1">
+                    {stockData?.name || 'Loading...'} ({ticker})
+                    {stockData?.region === 'HK' && (
+                      <span className="ml-3 text-sm bg-orange-500/20 text-orange-400 px-2 py-1 rounded">🇭🇰 HK</span>
+                    )}
+                    {isDemoMode && (
+                      <span className="ml-3 text-sm bg-blue-500/20 text-blue-400 px-2 py-1 rounded">DEMO</span>
+                    )}
+                  </h1>
+                  <div className="text-sm ghost">
+                    Market Cap {stockData?.marketCap || 'N/A'} • {stockData?.sector || 'Technology'}
+                  </div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-3xl font-bold mb-1">
+                  ${stockData?.price?.toFixed(2) || '0.00'}
+                  {stockData?.region === 'HK' && (
+                    <span className="text-sm text-orange-400 ml-1">HKD</span>
+                  )}
+                </div>
+                <div className="text-xs ghost mt-1">
+                  Updated: {stockData?.lastUpdated ? new Date(stockData.lastUpdated).toLocaleTimeString() : 'Just now'}
+                </div>
+              </div>
+            </div>
+          </header>
 
-          {/* Main Content */}
-          <div className="container mx-auto px-4 py-8">
-            <main className="space-y-12">
-
-              {/* 1. Overview */}
-              <section id="overview" className="grid lg:grid-cols-3 gap-8 scroll-mt-24">
-                <SimpleErrorBoundary>
-                  {/* Left Panel - Scores */}
-                  <div className="lg:col-span-1">
-                    <div className="card p-6 sticky top-4">
-                      <h2 className="text-xl font-bold mb-6">Quality Scores</h2>
-                      
-                      {/* Score Cards */}
-                      <div className="space-y-4 mb-8">
-                        <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                          <span className="font-medium">Value</span>
-                          <span className="text-lg font-bold text-blue-400">
-                            {stockData.scores.value}/10
-                          </span>
+          {/* TABLE OF CONTENTS + CONTENT */}
+          <div className="grid grid-cols-12 gap-8">
+            
+            {/* LEFT SIDEBAR: Table of Contents */}
+            <aside className="col-span-12 lg:col-span-3">
+              <div className="sticky top-24">
+                <div className="card p-4">
+                  <h3 className="font-semibold mb-4 text-lg">Stock Analysis</h3>
+                  <nav className="space-y-2">
+                    {navigationItems.map((item, index) => (
+                      <button
+                        key={item.id}
+                        onClick={() => scrollToSection(item.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-3 ${
+                          activeSection === item.id
+                            ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/40'
+                            : 'hover:bg-white/5 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <span className="text-lg">{index + 1}</span>
+                        <div>
+                          <div className="text-sm font-medium">{item.label}</div>
                         </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                          <span className="font-medium">Growth</span>
-                          <span className="text-lg font-bold text-green-400">
-                            {stockData.scores.growth}/10
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                          <span className="font-medium">Profitability</span>
-                          <span className="text-lg font-bold text-purple-400">
-                            {stockData.scores.profit}/10
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
-                          <span className="font-medium">Momentum</span>
-                          <span className="text-lg font-bold text-yellow-400">
-                            {stockData.scores.momentum}/10
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Radar Chart */}
-                      <div className="h-64">
-                        <div ref={radarChartRef} className="w-full h-full"></div>
+                      </button>
+                    ))}
+                  </nav>
+                  
+                  {isDemoMode && (
+                    <div className="mt-6 p-3 bg-blue-500/10 rounded-lg border border-blue-400/20">
+                      <div className="text-blue-400 font-medium text-sm mb-2">📊 Bloomberg Data</div>
+                      <div className="text-xs text-blue-300/70">
+                        Professional analysis with verified Bloomberg Terminal data including HK stocks.
                       </div>
                     </div>
-                  </div>
-                </SimpleErrorBoundary>
+                  )}
+                </div>
+              </div>
+            </aside>
 
-                <SimpleErrorBoundary>
-                  {/* Right Panel - About & Valuation */}
-                  <div className="lg:col-span-2 space-y-6">
+            {/* RIGHT CONTENT: All Sections */}
+            <main className="col-span-12 lg:col-span-9 space-y-8">
+
+              {/* 1. Company Overview */}
+              <section id="overview" className="scroll-mt-24">
+                <div className="card p-6">
+                  <h2 className="text-2xl font-bold mb-6">Company Overview</h2>
+                  
+                  {/* Score Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div className="card p-4 text-center">
+                      <div className="text-3xl font-bold mb-2" style={{ color: '#f59e0b' }}>
+                        {stockData?.scores?.value?.toFixed(1) || '0.0'}
+                      </div>
+                      <div className="text-sm ghost">Value</div>
+                    </div>
+                    <div className="card p-4 text-center">
+                      <div className="text-3xl font-bold mb-2" style={{ color: '#3b82f6' }}>
+                        {stockData?.scores?.growth?.toFixed(1) || '0.0'}
+                      </div>
+                      <div className="text-sm ghost">Growth</div>
+                    </div>
+                    <div className="card p-4 text-center">
+                      <div className="text-3xl font-bold mb-2" style={{ color: '#10b981' }}>
+                        {stockData?.scores?.profit?.toFixed(1) || '0.0'}
+                      </div>
+                      <div className="text-sm ghost">Profit</div>
+                    </div>
+                    <div className="card p-4 text-center">
+                      <div className="text-3xl font-bold mb-2" style={{ color: '#8b5cf6' }}>
+                        {stockData?.scores?.momentum?.toFixed(1) || '0.0'}
+                      </div>
+                      <div className="text-sm ghost">Momentum</div>
+                    </div>
+                  </div>
+
+                  {/* Valuation Bar */}
+                  <div className="mb-8">
+                    <div className="flex justify-between text-sm ghost mb-3">
+                      <span>Undervalued</span>
+                      <span>Fair Value</span>
+                      <span>Overvalued</span>
+                    </div>
+                    <div className="relative mb-4">
+                      <div className="h-3 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400"></div>
+                      <div 
+                        className="absolute top-0 w-1 h-3 bg-gray-900 rounded-full transform -translate-x-1/2"
+                        style={{ left: `${valuationInfo.position}%` }}
+                      ></div>
+                      <div 
+                        className="absolute top-3 w-px h-4 bg-gray-600 transform -translate-x-1/2"
+                        style={{ left: `${valuationInfo.position}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-medium">Current Price</div>
+                      <div className="text-sm ghost">{valuationInfo.status}</div>
+                    </div>
+                  </div>
+
+                  {/* Company Description */}
+                  <div>
+                    <h3 className="font-semibold mb-3">About the Company</h3>
+                    <p className="leading-relaxed mb-6">
+                      {stockData?.description || 'Loading company information...'}
+                    </p>
                     
-                    {/* About */}
-                    <div className="card p-6">
-                      <h3 className="text-xl font-bold mb-4">About</h3>
-                      <p className="text-gray-300 leading-relaxed mb-6">
-                        {stockData.description}
-                      </p>
-                      
-                      {/* Key Stats */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="text-center p-3 bg-gray-800/30 rounded-lg">
-                          <div className="text-sm text-gray-400">Market Cap</div>
-                          <div className="font-bold text-lg">{stockData.marketCap}</div>
-                        </div>
-                        <div className="text-center p-3 bg-gray-800/30 rounded-lg">
-                          <div className="text-sm text-gray-400">Forward P/E</div>
-                          <div className="font-bold text-lg">{stockData.forwardPE}</div>
-                        </div>
-                        <div className="text-center p-3 bg-gray-800/30 rounded-lg">
-                          <div className="text-sm text-gray-400">TTM P/E</div>
-                          <div className="font-bold text-lg">{stockData.ttmPE}</div>
-                        </div>
-                        <div className="text-center p-3 bg-gray-800/30 rounded-lg">
-                          <div className="text-sm text-gray-400">Sector</div>
-                          <div className="font-bold text-lg">{stockData.sector}</div>
-                        </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">Market Cap</div>
+                        <div className="font-semibold">{stockData?.marketCap || 'N/A'}</div>
+                      </div>
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">Forward P/E</div>
+                        <div className="font-semibold">{stockData?.forwardPE || 'N/A'}</div>
+                      </div>
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">TTM P/E</div>
+                        <div className="font-semibold">{stockData?.ttmPE || 'N/A'}</div>
+                      </div>
+                      <div className="chip px-3 py-2">
+                        <div className="text-xs ghost">Sector</div>
+                        <div className="font-semibold">{stockData?.sector || 'Technology'}</div>
                       </div>
                     </div>
-
-                    {/* Valuation */}
-                    <div className="card p-6">
-                      <h3 className="text-xl font-bold mb-4">Valuation Analysis</h3>
-                      
-                      {stockData.eps?.values?.length > 0 ? (
-                        <>
-                          <div className="h-80 mb-4">
-                            <div ref={valuationChartRef} className="w-full h-full"></div>
-                          </div>
-                          
-                          {valuationPosition && (
-                            <div className="mt-4">
-                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                valuationPosition === 'undervalued' ? 'bg-green-500/20 text-green-400' :
-                                valuationPosition === 'fair' ? 'bg-yellow-500/20 text-yellow-400' :
-                                valuationPosition === 'expensive' ? 'bg-orange-500/20 text-orange-400' :
-                                'bg-red-500/20 text-red-400'
-                              }`}>
-                                {valuationPosition === 'undervalued' ? '📈 Potentially Undervalued' :
-                                 valuationPosition === 'fair' ? '⚖️ Fairly Valued' :
-                                 valuationPosition === 'expensive' ? '⚠️ Expensive' :
-                                 '🔴 Potentially Overvalued'}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="text-center py-12">
-                          <div className="text-yellow-400 text-4xl mb-4">📊</div>
-                          <div className="text-xl font-medium mb-3">Valuation Analysis Unavailable</div>
-                          <div className="text-gray-400">
-                            No EPS estimates available for this ticker.
-                          </div>
-                        </div>
-                      )}
-                    </div>
                   </div>
-                </SimpleErrorBoundary>
+                </div>
               </section>
 
-              {/* 2. Peers & Segments */}
-              <section id="peers" className="grid lg:grid-cols-2 gap-8 scroll-mt-24">
-                <SimpleErrorBoundary>
+              {/* 2. Valuation Analysis - WITH SMALLER EPS GROWTH RATES */}
+              <section id="valuation" className="scroll-mt-24">
+                <ErrorBoundary fallback="Valuation section failed to load">
                   <div className="card p-6">
-                    <h3 className="text-xl font-bold mb-4">Peer Comparison</h3>
+                    <h2 className="text-2xl font-bold mb-6">Valuation Analysis</h2>
+                    
+                    {stockData?.eps?.values?.length > 0 && stockData?.peBands ? (
+                      <>
+                        {/* EPS Data & Growth Rates Table */}
+                        <div className="grid md:grid-cols-2 gap-6 mb-6">
+                          {/* EPS Forecasts */}
+                          <div className="card p-4">
+                            <h3 className="font-semibold mb-3 text-cyan-400">📊 EPS Forecasts</h3>
+                            <div className="space-y-3">
+                              {stockData.eps.years.map((year, index) => (
+                                <div key={year} className="flex items-center justify-between">
+                                  <span className="text-sm font-medium">{year}E</span>
+                                  <span className="font-mono font-bold">
+                                    ${stockData.eps.values[index]?.toFixed(2) || 'N/A'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* 🔥 FIXED: Smaller EPS Growth Rates */}
+                          <div className="card p-4">
+                            <h3 className="font-semibold mb-3 text-green-400">📈 EPS Growth Rates</h3>
+                            <div className="space-y-3">
+                              {epsGrowthRates.length > 0 ? (
+                                epsGrowthRates.map((growth, index) => (
+                                  <div key={index} className="flex items-center justify-between">
+                                    <span className="text-sm font-medium">
+                                      {growth.fromYear} → {growth.toYear}
+                                    </span>
+                                    <span className={`font-mono font-medium px-2 py-1 rounded text-sm ${
+                                      growth.growthRate >= 15 ? 'bg-green-500/20 text-green-400' :
+                                      growth.growthRate >= 10 ? 'bg-blue-500/20 text-blue-400' :
+                                      growth.growthRate >= 0 ? 'bg-yellow-500/20 text-yellow-400' :
+                                      'bg-red-500/20 text-red-400'
+                                    }`}>
+                                      {growth.growthRate > 0 ? '+' : ''}{growth.growthRate.toFixed(1)}%
+                                    </span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-sm ghost text-center py-2">
+                                  Growth rates unavailable
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 mb-4 flex-wrap">
+                          <span className="chip px-3 py-2">
+                            P/E Bands: {stockData.peBands.low}× / {stockData.peBands.mid}× / {stockData.peBands.high}×
+                          </span>
+                          <span className="chip px-3 py-2">
+                            Current Price: ${stockData?.price?.toFixed(2) || '0.00'}
+                          </span>
+                          {stockData?.dataQuality?.warning && (
+                            <span className="chip px-3 py-2 text-yellow-400">
+                              ⚠️ {stockData.dataQuality.warning.split(' - ')[0]}
+                            </span>
+                          )}
+                        </div>
+                        <div id="valuationChart" className="chart-lg"></div>
+                      </>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="text-yellow-400 text-4xl mb-4">📊</div>
+                        <div className="text-xl font-medium mb-3">Valuation Analysis Unavailable</div>
+                        <div className="text-ghost">
+                          {isDemoMode 
+                            ? 'This ticker may have incomplete EPS data. Try AAPL, MSFT, GOOGL, or META for full analysis.'
+                            : 'No forward EPS estimates available from analysts.'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ErrorBoundary>
+              </section>
+
+              {/* 3. Quality Analysis */}
+              <section id="quality" className="scroll-mt-24">
+                <ErrorBoundary fallback="Quality analysis section failed to load">
+                  <div className="card p-6">
+                    <h2 className="text-2xl font-bold mb-6">Quality Analysis</h2>
+                    <div className="grid lg:grid-cols-2 gap-8">
+                      <div>
+                        <h3 className="font-semibold mb-4">Quality Radar</h3>
+                        <div id="qualityRadar" className="chart"></div>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold mb-4">Score Breakdown</h3>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Value Score</span>
+                            <div className="flex items-center gap-3 w-32">
+                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-orange-400 rounded-full transition-all duration-300" 
+                                  style={{width: `${(stockData?.scores?.value || 0) * 10}%`}}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-bold w-8">{stockData?.scores?.value?.toFixed(1) || '0.0'}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Growth Score</span>
+                            <div className="flex items-center gap-3 w-32">
+                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-blue-400 rounded-full transition-all duration-300" 
+                                  style={{width: `${(stockData?.scores?.growth || 0) * 10}%`}}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-bold w-8">{stockData?.scores?.growth?.toFixed(1) || '0.0'}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Profit Score</span>
+                            <div className="flex items-center gap-3 w-32">
+                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-green-400 rounded-full transition-all duration-300" 
+                                  style={{width: `${(stockData?.scores?.profit || 0) * 10}%`}}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-bold w-8">{stockData?.scores?.profit?.toFixed(1) || '0.0'}</span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm">Momentum Score</span>
+                            <div className="flex items-center gap-3 w-32">
+                              <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-purple-400 rounded-full transition-all duration-300" 
+                                  style={{width: `${(stockData?.scores?.momentum || 0) * 10}%`}}
+                                ></div>
+                              </div>
+                              <span className="text-sm font-bold w-8">{stockData?.scores?.momentum?.toFixed(1) || '0.0'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {isDemoMode && (
+                          <div className="mt-6 p-3 bg-blue-500/10 rounded-lg border border-blue-400/20">
+                            <div className="text-xs text-blue-300/70">
+                              💡 Quality scores are calculated using fundamental metrics including valuation, growth trajectory, profitability, and momentum indicators.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </ErrorBoundary>
+              </section>
+
+              {/* 4. Peer Comparison */}
+              <section id="peers" className="scroll-mt-24">
+                <ErrorBoundary fallback="Peer comparison section failed to load">
+                  <div className="card p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold">Peer Comparison</h2>
+                      <div className="flex items-center gap-3">
+                        {isDemoMode && (
+                          <span className="chip px-2 py-1 text-blue-400 text-xs">
+                            📊 Demo Peers
+                          </span>
+                        )}
+                        <button id="toggleLabelsBtn" className="btn text-xs px-3 py-1">Labels: ON</button>
+                      </div>
+                    </div>
                     
                     {stockData?.peers?.length > 0 ? (
                       <>
                         <div className="mb-4">
-                          <p className="text-sm text-gray-400">
+                          <p className="text-sm ghost">
                             Forward P/E vs Market Cap comparison with sector peers. 
                             Bubble size represents relative market influence.
                           </p>
                         </div>
-                        <div ref={peersChartRef} className="h-80"></div>
+                        <div id="peersChart" className="chart"></div>
                       </>
                     ) : (
                       <div className="text-center py-12">
                         <div className="text-yellow-400 text-4xl mb-4">🏢</div>
                         <div className="text-xl font-medium mb-3">Peer Data Unavailable</div>
-                        <div className="text-gray-400">
+                        <div className="text-ghost">
                           {isDemoMode 
                             ? 'Peer comparison data not available for this ticker. Try major stocks like AAPL, MSFT, or GOOGL.'
                             : 'No peer comparison data available for this ticker'}
                         </div>
                       </div>
                     )}
-                  </div>
-                </SimpleErrorBoundary>
 
-                <SimpleErrorBoundary>
-                  <div className="card p-6">
-                    <h3 className="text-xl font-bold mb-4">Revenue by Segment</h3>
-                    
-                    {stockData?.segments?.length > 0 ? (
-                      <>
-                        <div ref={segmentChartRef} className="h-80 mb-4"></div>
-                        <div className="space-y-2">
-                          {stockData.segments.map((segment, index) => (
-                            <div key={index} className="flex items-center gap-3">
-                              <div 
-                                className="w-4 h-4 rounded-full" 
-                                style={{ backgroundColor: segment.itemStyle.color }}
-                              ></div>
-                              <span className="text-sm flex-1">{segment.name}</span>
-                              <span className="text-sm font-semibold">{segment.value}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="text-yellow-400 text-4xl mb-4">🥧</div>
-                        <div className="text-xl font-medium mb-3">Segment Data Unavailable</div>
-                        <div className="text-gray-400">
-                          {isDemoMode 
-                            ? 'Revenue segment data not available for this ticker. Try major stocks like AAPL, MSFT, or GOOGL.'
-                            : 'No revenue segment data available for this ticker'}
+                    {/* Revenue Segments */}
+                    {stockData?.segments?.length > 0 && (
+                      <div className="mt-8 pt-6 border-t border-white/10">
+                        <h3 className="font-semibold mb-4">Revenue by Segment</h3>
+                        <div className="grid lg:grid-cols-2 gap-6">
+                          <div id="segmentPie" className="chart"></div>
+                          <div className="space-y-3">
+                            {stockData.segments.map((segment, index) => (
+                              <div key={index} className="flex items-center gap-3">
+                                <div 
+                                  className="w-4 h-4 rounded-full" 
+                                  style={{ backgroundColor: segment.itemStyle.color }}
+                                ></div>
+                                <span className="text-sm flex-1">{segment.name}</span>
+                                <span className="text-sm font-semibold">{segment.value}%</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     )}
                   </div>
-                </SimpleErrorBoundary>
+                </ErrorBoundary>
               </section>
 
-              {/* 3. Analysis */}
-              <section id="analysis" className="grid lg:grid-cols-2 gap-8 scroll-mt-24">
-                <SimpleErrorBoundary>
+              {/* 5. Investment Analysis */}
+              <section id="analysis" className="scroll-mt-24">
+                <ErrorBoundary fallback="Investment analysis section failed">
                   <div className="card p-6">
-                    <h3 className="text-xl font-bold mb-6 text-green-400">
-                      <div className="flex items-center gap-2">
-                        <span>✓</span>
-                        <span>Key Strengths</span>
-                      </div>
-                    </h3>
-                    <div className="space-y-4">
-                      <ul className="space-y-4">
-                        {stockData?.strengths?.length > 0 ? (
-                          stockData.strengths.map((strength, index) => (
-                            <li key={index} className="flex items-start gap-3">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold">Investment Analysis</h2>
+                      {isDemoMode && (
+                        <span className="chip px-2 py-1 text-blue-400 text-xs">
+                          🎯 Professional Analysis
+                        </span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div>
+                        <div className="ghost text-sm mb-4 flex items-center gap-2">
+                          <span className="text-green-400">✓</span> Key Investment Strengths
+                        </div>
+                        <ul className="space-y-3 text-sm">
+                          {stockData?.strengths?.map((strength, i) => (
+                            <li key={i} className="flex items-start gap-3">
                               <span className="text-green-400 mt-1 text-xs">●</span>
                               <span className="leading-relaxed">{strength}</span>
                             </li>
-                          ))
-                        ) : (
-                          <li className="flex items-start gap-3">
-                            <span className="text-green-400 mt-1">●</span>
-                            <span>Loading fundamental strengths analysis...</span>
-                          </li>
-                        )}
-                      </ul>
+                          )) || (
+                            <li className="flex items-start gap-3">
+                              <span className="text-green-400 mt-1">●</span>
+                              <span>Loading investment strengths analysis...</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="ghost text-sm mb-4 flex items-center gap-2">
+                          <span className="text-red-400">⚠</span> Key Investment Risks
+                        </div>
+                        <ul className="space-y-3 text-sm">
+                          {stockData?.risks?.map((risk, i) => (
+                            <li key={i} className="flex items-start gap-3">
+                              <span className="text-red-400 mt-1 text-xs">●</span>
+                              <span className="leading-relaxed">{risk}</span>
+                            </li>
+                          )) || (
+                            <li className="flex items-start gap-3">
+                              <span className="text-red-400 mt-1">●</span>
+                              <span>Loading investment risks analysis...</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
                     </div>
                     
                     {isDemoMode && (
@@ -834,197 +922,89 @@ export default function ReportContent({ initialTicker = '' }) {
                       </div>
                     )}
                   </div>
-                </SimpleErrorBoundary>
-
-                <SimpleErrorBoundary>
-                  <div className="card p-6">
-                    <h3 className="text-xl font-bold mb-6 text-red-400">
-                      <div className="flex items-center gap-2">
-                        <span>⚠</span>
-                        <span>Key Risks</span>
-                      </div>
-                    </h3>
-                    <div className="space-y-4">
-                      <ul className="space-y-4">
-                        {stockData?.risks?.length > 0 ? (
-                          stockData.risks.map((risk, index) => (
-                            <li key={index} className="flex items-start gap-3">
-                              <span className="text-red-400 mt-1 text-xs">●</span>
-                              <span className="leading-relaxed">{risk}</span>
-                            </li>
-                          ))
-                        ) : (
-                          <li className="flex items-start gap-3">
-                            <span className="text-red-400 mt-1">●</span>
-                            <span>Loading investment risks analysis...</span>
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                </SimpleErrorBoundary>
+                </ErrorBoundary>
               </section>
 
-              {/* 4. Latest Company News - AUTO REFRESHING */}
+              {/* 6. Latest News */}
               <section id="news" className="scroll-mt-24">
-                <SimpleErrorBoundary fallback="News section failed to load">
+                <ErrorBoundary fallback="News section failed to load">
                   <div className="card p-6">
                     <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h2 className="text-2xl font-bold">Latest Company News</h2>
-                        <p className="text-gray-400 mt-1 text-sm">
-                          Real-time news and updates for {stockData?.name || ticker}
-                        </p>
-                      </div>
-                      
-                      {/* News Status & Refresh Controls */}
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <div className={`w-2 h-2 rounded-full ${
-                            companyNews.length > 0 ? 'bg-green-400' : 'bg-yellow-400'
-                          } animate-pulse`}></div>
-                          <span className="font-medium text-sm">
-                            {companyNews.length > 0 ? '🟢 Live Feed' : '🟡 Loading...'}
-                          </span>
-                          {newsLastUpdated && (
-                            <span className="text-sm opacity-60">
-                              • {new Date(newsLastUpdated).toLocaleTimeString()}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <button
-                          onClick={handleManualNewsRefresh}
-                          disabled={newsLoading}
-                          className="px-3 py-1 text-sm bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/30 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {newsLoading ? (
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 animate-spin rounded-full border border-cyan-400 border-t-transparent"></div>
-                              Refreshing...
-                            </div>
-                          ) : (
-                            '🔄 Refresh'
-                          )}
-                        </button>
+                      <h2 className="text-2xl font-bold">Latest Company News</h2>
+                      <div className="flex items-center gap-2 text-sm ghost">
+                        {isDemoMode ? (
+                          <span className="chip px-2 py-1 text-blue-400 text-xs">📰 Demo News</span>
+                        ) : (
+                          stockData?.newsSource === 'live' && <span className="text-green-400">● Live</span>
+                        )}
+                        <span>{stockData?.news?.length || 0} items</span>
                       </div>
                     </div>
-
-                    {newsError && (
-                      <div className="mb-6 p-4 bg-red-500/10 border border-red-400/20 rounded-lg">
-                        <div className="flex items-center gap-2 text-red-400">
-                          <span>⚠️</span>
-                          <span className="font-medium">News Error</span>
-                        </div>
-                        <div className="text-sm text-red-300 mt-1">{newsError}</div>
-                      </div>
-                    )}
-
-                    {/* News Articles */}
-                    {companyNews.length > 0 ? (
+                    
+                    {stockData?.news?.length > 0 ? (
                       <div className="space-y-4">
-                        {companyNews.map((article, index) => (
-                          <div key={index} className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/30 hover:border-gray-600/50 transition-colors">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1 min-w-0">
-                                {/* Article Header */}
-                                <div className="flex items-center gap-3 mb-2">
-                                  <span className="text-sm font-medium text-blue-400">
-                                    {article.source}
-                                  </span>
-                                  <span className="text-sm text-gray-400">
-                                    {article.datetime}
-                                  </span>
-                                </div>
-                                
-                                {/* Article Content */}
-                                <h3 className="font-semibold text-white mb-2 leading-snug">
-                                  {article.url && article.url !== '#' ? (
-                                    <a
-                                      href={article.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="hover:text-blue-400 transition-colors"
-                                    >
-                                      {article.headline}
-                                    </a>
-                                  ) : (
-                                    article.headline
-                                  )}
-                                </h3>
-                                
-                                {article.summary && (
-                                  <p className="text-sm text-gray-400 leading-relaxed">
-                                    {article.summary}
-                                  </p>
-                                )}
-                              </div>
-                              
-                              {/* External Link Icon */}
-                              {article.url && article.url !== '#' && (
-                                <a
-                                  href={article.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex-shrink-0 p-2 text-gray-400 hover:text-blue-400 transition-colors"
-                                  title="Read full article"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                  </svg>
-                                </a>
-                              )}
+                        {stockData.news.slice(0, 6).map((item, i) => (
+                          <article key={i} className="p-4 rounded-xl border border-white/10 hover:border-cyan-400/40 transition-all duration-200">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="text-xs ghost">{item.source}</div>
+                              <div className="text-xs ghost">{item.datetime}</div>
                             </div>
-                          </div>
+                            <h3 className="font-semibold mb-2 leading-relaxed">
+                              {item.headline}
+                            </h3>
+                            {item.summary && item.summary !== item.headline && (
+                              <p className="text-sm ghost leading-relaxed mb-3">{item.summary}</p>
+                            )}
+                            <a 
+                              href={item.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-flex items-center gap-1"
+                            >
+                              Read more 
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          </article>
                         ))}
-
-                        {/* Auto-refresh Info */}
-                        <div className="mt-4 p-3 bg-blue-500/5 rounded-lg border border-blue-400/10">
-                          <div className="flex items-center gap-2 text-xs text-blue-300/70">
-                            <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                            <span>
-                              📡 <span className="text-blue-400 font-medium">Live News Feed:</span> Company-specific news 
-                              updates automatically every 5 minutes from Finnhub and Google News.
-                            </span>
-                          </div>
-                        </div>
                       </div>
                     ) : (
                       <div className="text-center py-12">
                         <div className="text-yellow-400 text-4xl mb-4">📰</div>
-                        <div className="text-xl font-medium mb-3">
-                          {newsLoading ? 'Loading Company News...' : 'No Recent News Available'}
-                        </div>
-                        <div className="text-gray-400">
-                          {newsLoading 
-                            ? `Fetching latest news for ${stockData?.name || ticker}...`
-                            : `No recent news found for ${stockData?.name || ticker}. News updates automatically every 5 minutes.`
+                        <div className="text-xl font-medium mb-3">No Recent News</div>
+                        <div className="text-ghost">
+                          {isDemoMode 
+                            ? `No recent news available in demo for ${ticker}. Major stocks like AAPL, MSFT, GOOGL have sample news articles.`
+                            : `No recent news available for ${ticker}`
                           }
                         </div>
-                        {!newsLoading && (
-                          <button
-                            onClick={handleManualNewsRefresh}
-                            className="mt-4 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 rounded-lg transition-colors"
-                          >
-                            🔄 Try Refresh
-                          </button>
-                        )}
+                      </div>
+                    )}
+
+                    {isDemoMode && stockData?.news?.length > 0 && (
+                      <div className="mt-6 bg-blue-500/5 rounded-lg p-4 border border-blue-400/10">
+                        <div className="text-xs text-blue-300/70">
+                          📡 <span className="text-blue-400 font-medium">News Integration:</span> In live mode, this section automatically 
+                          pulls the latest company-specific news, earnings announcements, and analyst updates from premium financial news sources 
+                          with real-time updates throughout the trading day.
+                        </div>
                       </div>
                     )}
                   </div>
-                </SimpleErrorBoundary>
+                </ErrorBoundary>
               </section>
 
             </main>
           </div>
 
-          {/* Demo Mode Footer */}
+          {/* Ready to Go Live Footer */}
           {isDemoMode && (
             <div className="mt-12">
               <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
                 <div className="text-center">
                   <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
-                  <div className="text-sm text-gray-400 mb-4">
+                  <div className="text-sm ghost mb-4">
                     This demo showcases institutional-grade stock analysis with {availableTickers.length || '115'} stocks including Hong Kong listings. 
                     When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
                   </div>
@@ -1043,7 +1023,7 @@ export default function ReportContent({ initialTicker = '' }) {
           )}
 
         </div>
-      </SimpleErrorBoundary>
+      </ErrorBoundary>
     </>
   )
 }
