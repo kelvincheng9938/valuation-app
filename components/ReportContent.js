@@ -65,7 +65,7 @@ export default function ReportContent() {
       setTicker(symbol.toUpperCase())
       setUpdateKey(prev => prev + 1)
       
-      // Load company news when stock data loads
+      // Load company news after stock data loads successfully
       loadCompanyNews(symbol.toUpperCase())
       
       // Update URL without page reload
@@ -82,7 +82,7 @@ export default function ReportContent() {
     }
   }
 
-  // Load company-specific news
+  // Load company-specific news (safe implementation)
   const loadCompanyNews = async (symbol) => {
     if (!symbol.trim()) return
     
@@ -102,27 +102,28 @@ export default function ReportContent() {
         setCompanyNews(data.news || [])
         console.log(`✅ Loaded ${data.news?.length || 0} news articles for ${symbol}`)
       } else {
-        throw new Error('Failed to fetch company news')
+        console.warn('Company news API not available, using demo news')
+        setCompanyNews([])
       }
       
     } catch (error) {
-      console.error(`❌ Failed to load company news for ${symbol}:`, error)
+      console.warn(`Company news API failed for ${symbol}, using demo news:`, error)
       setCompanyNews([])
     } finally {
       setNewsLoading(false)
     }
   }
 
-  // Auto-refresh company news every 3 minutes
+  // Auto-refresh company news every 3 minutes (only if API is available)
   useEffect(() => {
-    if (ticker) {
+    if (ticker && companyNews.length > 0) {
       const newsInterval = setInterval(() => {
         loadCompanyNews(ticker)
       }, 3 * 60 * 1000) // 3 minutes
       
       return () => clearInterval(newsInterval)
     }
-  }, [ticker])
+  }, [ticker, companyNews.length])
 
   // Search functionality
   const handleSearch = (query) => {
@@ -747,7 +748,7 @@ export default function ReportContent() {
                 </ErrorBoundary>
               </section>
 
-              {/* Latest News */}
+              {/* Latest Company News */}
               <section>
                 <ErrorBoundary fallback="News section failed to load">
                   <div className="card p-6">
@@ -761,6 +762,7 @@ export default function ReportContent() {
                       )}
                     </div>
                     
+                    {/* Show live company news if available, otherwise fall back to demo news */}
                     {companyNews && companyNews.length > 0 ? (
                       <div className="space-y-4">
                         {companyNews.map((article, index) => (
@@ -786,26 +788,55 @@ export default function ReportContent() {
                             </div>
                           </div>
                         ))}
+                        
+                        {/* Live News Integration Info */}
+                        <div className="mt-6 bg-blue-500/5 rounded-lg p-4 border border-blue-400/10">
+                          <div className="text-xs text-blue-300/70">
+                            📡 <span className="text-blue-400 font-medium">Live News Integration:</span> Company-specific news 
+                            automatically refreshes every 3 minutes with the latest earnings announcements, analyst updates, 
+                            and relevant financial developments for {ticker}.
+                          </div>
+                        </div>
                       </div>
                     ) : (
-                      <div className="text-center py-8">
-                        <div className="text-gray-600 dark:text-gray-400 text-sm">
-                          {newsLoading 
-                            ? 'Loading latest company news...'
-                            : `Loading latest news for ${ticker}...`
-                          }
-                        </div>
-                      </div>
-                    )}
-
-                    {/* News Integration Info */}
-                    {companyNews.length > 0 && (
-                      <div className="mt-6 bg-blue-500/5 rounded-lg p-4 border border-blue-400/10">
-                        <div className="text-xs text-blue-300/70">
-                          📡 <span className="text-blue-400 font-medium">Live News Integration:</span> Company-specific news 
-                          automatically refreshes every 3 minutes with the latest earnings announcements, analyst updates, 
-                          and relevant financial developments for {ticker}.
-                        </div>
+                      // Fallback to demo news from stockData
+                      <div>
+                        {stockData.news && stockData.news.length > 0 ? (
+                          <div className="space-y-4">
+                            {stockData.news.map((article, index) => (
+                              <div key={index} className="border-l-4 border-cyan-400 pl-4 py-2">
+                                <h4 className="font-medium text-gray-900 dark:text-white mb-1">
+                                  {article.headline}
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                  {article.summary}
+                                </p>
+                                <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-500">
+                                  <span>{article.source}</span>
+                                  <span>•</span>
+                                  <span>{article.datetime}</span>
+                                  <a 
+                                    href={article.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-cyan-400 hover:text-cyan-300"
+                                  >
+                                    Read more →
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8">
+                            <div className="text-gray-600 dark:text-gray-400 text-sm">
+                              {newsLoading 
+                                ? 'Loading latest company news...'
+                                : `No recent news available for ${ticker}`
+                              }
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
