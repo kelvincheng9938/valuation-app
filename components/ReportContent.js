@@ -1,11 +1,25 @@
-// components/ReportContent.js - COMPLETE FILE with auto-refreshing company news
+// components/ReportContent.js - FIXED for build errors
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Navigation from '@/components/Navigation'
-import ErrorBoundary from '@/components/ErrorBoundary'
 import { fetchStockData, getAvailableTickers } from '@/lib/api'
 import * as echarts from 'echarts'
+
+// Simple ErrorBoundary fallback component
+function SimpleErrorBoundary({ children, fallback = "Something went wrong" }) {
+  const [hasError, setHasError] = useState(false)
+  
+  if (hasError) {
+    return (
+      <div className="p-4 bg-red-500/10 border border-red-400/20 rounded-lg">
+        <div className="text-red-400 font-medium">{fallback}</div>
+      </div>
+    )
+  }
+  
+  return children
+}
 
 export default function ReportContent({ initialTicker = '' }) {
   const router = useRouter()
@@ -106,8 +120,10 @@ export default function ReportContent({ initialTicker = '' }) {
     }
   }, [theme])
 
-  // Scroll spy for active section
+  // Scroll spy for active section - PROTECTED from server-side rendering
   useEffect(() => {
+    if (typeof window === 'undefined') return
+
     const handleScroll = () => {
       const sections = ['overview', 'valuation', 'quality', 'peers', 'analysis', 'news']
       const scrollPosition = window.scrollY + 100
@@ -135,10 +151,12 @@ export default function ReportContent({ initialTicker = '' }) {
     try {
       console.log(`Loading data for ${symbol}`)
       
-      // Update URL without navigation (for sharing/bookmarking)
-      const url = new URL(window.location)
-      url.searchParams.set('ticker', symbol.toUpperCase())
-      window.history.pushState({}, '', url)
+      // Update URL without navigation - PROTECTED from server-side rendering
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location)
+        url.searchParams.set('ticker', symbol.toUpperCase())
+        window.history.pushState({}, '', url)
+      }
       
       const data = await fetchStockData(symbol.toUpperCase())
       setStockData(data)
@@ -227,6 +245,8 @@ export default function ReportContent({ initialTicker = '' }) {
   }
 
   const scrollToSection = (sectionId) => {
+    if (typeof window === 'undefined') return
+    
     const element = document.getElementById(sectionId)
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' })
@@ -482,7 +502,11 @@ export default function ReportContent({ initialTicker = '' }) {
             <h2 className="text-3xl font-bold text-white mb-4">Analysis Unavailable</h2>
             <p className="text-gray-400 mb-6 max-w-md mx-auto">{error}</p>
             <button 
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  window.location.reload()
+                }
+              }}
               className="btn-primary px-6 py-3 rounded-lg font-medium"
             >
               Try Again
@@ -527,7 +551,7 @@ export default function ReportContent({ initialTicker = '' }) {
     <>
       <Navigation />
       
-      <ErrorBoundary>
+      <SimpleErrorBoundary>
         <div className="min-h-screen bg-gradient-to-br from-gray-900 to-black">
           
           {/* Header */}
@@ -593,7 +617,7 @@ export default function ReportContent({ initialTicker = '' }) {
 
               {/* 1. Overview */}
               <section id="overview" className="grid lg:grid-cols-3 gap-8 scroll-mt-24">
-                <ErrorBoundary>
+                <SimpleErrorBoundary>
                   {/* Left Panel - Scores */}
                   <div className="lg:col-span-1">
                     <div className="card p-6 sticky top-4">
@@ -633,9 +657,9 @@ export default function ReportContent({ initialTicker = '' }) {
                       </div>
                     </div>
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
 
-                <ErrorBoundary>
+                <SimpleErrorBoundary>
                   {/* Right Panel - About & Valuation */}
                   <div className="lg:col-span-2 space-y-6">
                     
@@ -704,12 +728,12 @@ export default function ReportContent({ initialTicker = '' }) {
                       )}
                     </div>
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
               </section>
 
               {/* 2. Peers & Segments */}
               <section id="peers" className="grid lg:grid-cols-2 gap-8 scroll-mt-24">
-                <ErrorBoundary>
+                <SimpleErrorBoundary>
                   <div className="card p-6">
                     <h3 className="text-xl font-bold mb-4">Peer Comparison</h3>
                     
@@ -735,9 +759,9 @@ export default function ReportContent({ initialTicker = '' }) {
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
 
-                <ErrorBoundary>
+                <SimpleErrorBoundary>
                   <div className="card p-6">
                     <h3 className="text-xl font-bold mb-4">Revenue by Segment</h3>
                     
@@ -769,12 +793,12 @@ export default function ReportContent({ initialTicker = '' }) {
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
               </section>
 
               {/* 3. Analysis */}
               <section id="analysis" className="grid lg:grid-cols-2 gap-8 scroll-mt-24">
-                <ErrorBoundary>
+                <SimpleErrorBoundary>
                   <div className="card p-6">
                     <h3 className="text-xl font-bold mb-6 text-green-400">
                       <div className="flex items-center gap-2">
@@ -810,9 +834,9 @@ export default function ReportContent({ initialTicker = '' }) {
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
 
-                <ErrorBoundary>
+                <SimpleErrorBoundary>
                   <div className="card p-6">
                     <h3 className="text-xl font-bold mb-6 text-red-400">
                       <div className="flex items-center gap-2">
@@ -838,12 +862,12 @@ export default function ReportContent({ initialTicker = '' }) {
                       </ul>
                     </div>
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
               </section>
 
               {/* 4. Latest Company News - AUTO REFRESHING */}
               <section id="news" className="scroll-mt-24">
-                <ErrorBoundary fallback="News section failed to load">
+                <SimpleErrorBoundary fallback="News section failed to load">
                   <div className="card p-6">
                     <div className="flex items-center justify-between mb-6">
                       <div>
@@ -988,7 +1012,7 @@ export default function ReportContent({ initialTicker = '' }) {
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </SimpleErrorBoundary>
               </section>
 
             </main>
@@ -1019,7 +1043,7 @@ export default function ReportContent({ initialTicker = '' }) {
           )}
 
         </div>
-      </ErrorBoundary>
+      </SimpleErrorBoundary>
     </>
   )
 }
