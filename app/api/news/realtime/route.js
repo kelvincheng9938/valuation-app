@@ -181,7 +181,7 @@ function parseGoogleNewsXML(xmlText) {
       if (title && link) {
         articles.push({
           headline: cleanGoogleNewsTitle(title),
-          summary: cleanDescription(description) || title.substring(0, 150) + '...',
+          summary: cleanDescription(description) || cleanGoogleNewsTitle(title).substring(0, 150) + '...',
           source: cleanSource(source) || 'Google News',
           datetime: formatGoogleNewsTime(pubDate),
           url: cleanGoogleNewsURL(link),
@@ -211,6 +211,8 @@ function cleanGoogleNewsTitle(title) {
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
+    .replace(/href="[^"]*"/g, '') // Remove href attributes
     .trim()
 }
 
@@ -223,6 +225,8 @@ function cleanDescription(description) {
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
+    .replace(/href="[^"]*"/g, '') // Remove href attributes
+    .replace(/https?:\/\/[^\s]+/g, '') // Remove URLs
     .substring(0, 200)
     .trim()
 }
@@ -290,39 +294,53 @@ function generateUpcomingEvents() {
   const events = []
   const today = new Date()
   
-  // Generate dynamic events for the next 30 days
-  const economicEvents = [
-    { name: 'US Non-Farm Payrolls', impact: 'High', time: '8:30 AM EST', freq: 'monthly' },
-    { name: 'US Unemployment Rate', impact: 'High', time: '8:30 AM EST', freq: 'monthly' },
-    { name: 'Fed Interest Rate Decision', impact: 'High', time: '2:00 PM EST', freq: 'quarterly' },
-    { name: 'US CPI Inflation Data', impact: 'High', time: '8:30 AM EST', freq: 'monthly' },
-    { name: 'US GDP Growth Rate', impact: 'Medium', time: '8:30 AM EST', freq: 'quarterly' },
-    { name: 'US Retail Sales', impact: 'Medium', time: '8:30 AM EST', freq: 'monthly' }
+  // Specific important upcoming events with correct dates
+  const specificEvents = [
+    {
+      name: 'US Non-Farm Payrolls',
+      description: 'Bureau of Labor Statistics - High Impact',
+      date: 'Oct 3, 2025',
+      time: '8:30 AM EST',
+      impact: 'High'
+    },
+    {
+      name: 'US Non-Farm Payrolls', 
+      description: 'Bureau of Labor Statistics - High Impact',
+      date: 'Nov 7, 2025',
+      time: '8:30 AM EST',
+      impact: 'High'
+    },
+    {
+      name: 'Fed Interest Rate Decision',
+      description: 'Federal Reserve FOMC Meeting - High Impact', 
+      date: 'Dec 18, 2025',
+      time: '2:00 PM EST',
+      impact: 'High'
+    },
+    {
+      name: 'US CPI Inflation Data',
+      description: 'Bureau of Labor Statistics - High Impact',
+      date: 'Oct 15, 2025', 
+      time: '8:30 AM EST',
+      impact: 'High'
+    },
+    {
+      name: 'US GDP Growth Rate',
+      description: 'Bureau of Economic Analysis - Medium Impact',
+      date: 'Oct 30, 2025',
+      time: '8:30 AM EST', 
+      impact: 'Medium'
+    },
+    {
+      name: 'US Retail Sales',
+      description: 'Bureau of Labor Statistics - Medium Impact',
+      date: 'Nov 15, 2025',
+      time: '8:30 AM EST',
+      impact: 'Medium'
+    }
   ]
   
-  // Add events for the next few weeks
-  for (let i = 1; i <= 30; i++) {
-    const eventDate = new Date(today)
-    eventDate.setDate(today.getDate() + i)
-    
-    // Add some random events
-    if (i % 7 === 0) { // Weekly events
-      const event = economicEvents[Math.floor(Math.random() * economicEvents.length)]
-      events.push({
-        name: event.name,
-        description: `Bureau of Labor Statistics - ${event.impact} Impact`,
-        date: eventDate.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric', 
-          year: 'numeric' 
-        }),
-        time: event.time,
-        impact: event.impact
-      })
-    }
-  }
-  
-  return events.slice(0, 6) // Return top 6 upcoming events
+  return specificEvents.slice(0, 6)
 }
 
 export async function GET() {
