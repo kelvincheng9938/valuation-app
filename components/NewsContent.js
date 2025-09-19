@@ -4,142 +4,117 @@ import Navigation from './Navigation'
 
 export default function NewsContent() {
   const [marketData, setMarketData] = useState(null)
-  const [news, setNews] = useState([])
+  const [breakingNews, setBreakingNews] = useState([])
+  const [generalNews, setGeneralNews] = useState([])
   const [loading, setLoading] = useState(true)
   const [isLiveMode, setIsLiveMode] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
+  const [dataSource, setDataSource] = useState('')
+  const [error, setError] = useState(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     loadData()
-    // Auto-refresh market data every 30 seconds
-    const interval = setInterval(loadData, 30000)
+    
+    // Auto-refresh every 30 seconds for breaking news detection
+    const interval = setInterval(loadData, 30 * 1000)
     return () => clearInterval(interval)
   }, [])
 
   const loadData = async () => {
     try {
-      // Try to fetch real market data first
-      const [marketResponse, newsResponse] = await Promise.all([
-        fetchRealMarketData(),
-        fetchRealMarketNews()
-      ])
+      setError(null)
+      console.log('🔄 Loading real-time data...')
       
-      setMarketData(marketResponse)
-      setNews(newsResponse)
-      setIsLiveMode(true)
+      const response = await fetch('/api/news/realtime', {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+      
+      if (!response.ok) {
+        throw new Error(`API responded with ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log('📊 Received real-time data:', data)
+      
+      if (data.marketData) {
+        setMarketData(data.marketData)
+        setBreakingNews(data.breakingNews || [])
+        setGeneralNews(data.generalNews || [])
+        setLastUpdated(data.lastUpdated)
+        setDataSource(data.source)
+        setIsLiveMode(data.source === 'live_apis')
+        
+        console.log('✅ Real-time data loaded:', {
+          marketData: Object.keys(data.marketData || {}),
+          breakingNews: data.breakingNews?.length || 0,
+          generalNews: data.generalNews?.length || 0,
+          source: data.source,
+          cached: data.cached
+        })
+      } else {
+        throw new Error('No market data received')
+      }
+      
     } catch (error) {
-      console.log('Using demo data due to:', error.message)
-      // Fallback to enhanced demo data
-      setMarketData(getUpdatedMarketData())
-      setNews(getDemoNews())
+      console.error('❌ Failed to load real-time data:', error)
+      setError(error.message)
+      
+      // Fallback to demo data
+      setMarketData(getDemoMarketData())
+      setBreakingNews([])
+      setGeneralNews(getDemoNews())
       setIsLiveMode(false)
+      setDataSource('fallback')
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
-  // Real market data fetching function
-  const fetchRealMarketData = async () => {
-    const apis = [
-      () => fetchFromFinnhub(),
-      () => fetchFromYahooFinance(),
-      () => fetchFromAlphaVantage()
-    ]
-
-    for (const fetchMethod of apis) {
-      try {
-        const data = await fetchMethod()
-        if (data && Object.keys(data).length > 0) {
-          return data
-        }
-      } catch (error) {
-        console.log('API failed, trying next...', error.message)
-        continue
-      }
-    }
+  const handleManualRefresh = async () => {
+    setRefreshing(true)
     
-    throw new Error('All market data APIs failed')
-  }
-
-  const fetchFromFinnhub = async () => {
-    const symbols = ['SPY', 'QQQ', 'BTCUSD', 'XAUUSD', 'USOIL']
-    const data = {}
-    
-    for (const symbol of symbols) {
-      try {
-        const response = await fetch(`/api/quote?symbol=${symbol}`)
-        if (response.ok) {
-          const result = await response.json()
-          const key = symbol === 'SPY' ? 'spy' : 
-                     symbol === 'QQQ' ? 'nasdaq' : 
-                     symbol === 'BTCUSD' ? 'btc' : 
-                     symbol === 'XAUUSD' ? 'gold' : 'oil'
-          
-          data[key] = {
-            price: result.price,
-            change: result.change,
-            changePercent: result.changePercent
-          }
-        }
-      } catch (error) {
-        console.log(`Failed to fetch ${symbol}:`, error)
-      }
-    }
-    
-    return Object.keys(data).length > 0 ? data : null
-  }
-
-  const fetchFromYahooFinance = async () => {
-    // Placeholder for Yahoo Finance integration
-    return null
-  }
-
-  const fetchFromAlphaVantage = async () => {
-    // Placeholder for Alpha Vantage integration
-    return null
-  }
-
-  const fetchRealMarketNews = async () => {
     try {
-      const response = await fetch('/api/news/market')
+      console.log('🔄 Manual refresh requested...')
+      const response = await fetch('/api/news/realtime', {
+        method: 'POST',
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+      
       if (response.ok) {
-        const result = await response.json()
-        return result.news || []
+        const data = await response.json()
+        setMarketData(data.marketData)
+        setBreakingNews(data.breakingNews || [])
+        setGeneralNews(data.generalNews || [])
+        setLastUpdated(data.lastUpdated)
+        setDataSource(data.source)
+        setIsLiveMode(data.source === 'live_apis')
+        setError(null)
+        console.log('✅ Manual refresh successful')
+      } else {
+        throw new Error('Refresh failed')
       }
     } catch (error) {
-      console.log('Market news API failed:', error)
+      console.error('❌ Manual refresh failed:', error)
+      setError('Manual refresh failed')
+    } finally {
+      setRefreshing(false)
     }
-    
-    return getDemoNews()
   }
 
-  // FIXED: Updated market data with proper price variations
-  const getUpdatedMarketData = () => {
-    const baseTime = Date.now()
-    const variation = () => (Math.random() - 0.5) * 0.015 // ±1.5% variation
-    
-    // Base prices updated to current market levels
-    const baseData = {
-      spy: { basePrice: 6223.00, baseChange: -0.62 },
-      nasdaq: { basePrice: 20108.9, baseChange: 0.04 },
-      btc: { basePrice: 97758, baseChange: 0.54 },
-      gold: { basePrice: 2614.58, baseChange: -0.76 },  // FIXED: Updated gold price
-      oil: { basePrice: 70.92, baseChange: -2.07 }      // FIXED: Updated oil price
+  const getDemoMarketData = () => {
+    return {
+      spy: { price: 6045.23, change: 0.85, changePercent: 0.85 },
+      nasdaq: { price: 19892.15, change: 1.12, changePercent: 1.12 },
+      btc: { price: 94650, change: -1.85, changePercent: -1.85 },
+      gold: { price: 2647.30, change: 0.32, changePercent: 0.32 },
+      oil: { price: 69.85, change: -0.98, changePercent: -0.98 }
     }
-    
-    const result = {}
-    
-    Object.entries(baseData).forEach(([key, data]) => {
-      const priceVariation = variation()
-      const changeVariation = (Math.random() - 0.5) * 0.5
-      
-      result[key] = {
-        price: data.basePrice * (1 + priceVariation),
-        change: data.baseChange + changeVariation,
-        changePercent: ((data.baseChange + changeVariation) / data.basePrice) * 100
-      }
-    })
-    
-    return result
   }
 
   const getDemoNews = () => {
@@ -149,56 +124,50 @@ export default function NewsContent() {
         summary: 'Federal Reserve officials emphasized data-dependent decisions amid mixed economic signals.',
         source: 'Reuters',
         datetime: '2 hours ago',
-        url: 'https://www.reuters.com/markets/us/'
+        url: '#'
       },
       {
         headline: 'Tech Earnings Season Kicks Off with Strong AI Revenue Growth',
         summary: 'Major technology companies reporting robust artificial intelligence business expansion.',
         source: 'Bloomberg',
         datetime: '4 hours ago',
-        url: 'https://www.bloomberg.com/technology/'
-      },
-      {
-        headline: 'Market Volatility Expected as Geopolitical Tensions Rise',
-        summary: 'Analysts predict increased market swings due to ongoing international developments.',
-        source: 'Financial Times',
-        datetime: '6 hours ago',
-        url: 'https://www.ft.com/markets'
-      },
-      {
-        headline: 'China Manufacturing PMI Shows Continued Recovery Momentum',
-        summary: 'Latest indicators from China point to sustained manufacturing expansion.',
-        source: 'WSJ',
-        datetime: '8 hours ago',
-        url: 'https://www.wsj.com/world/china/'
-      },
-      {
-        headline: 'European Central Bank Maintains Hawkish Stance on Inflation',
-        summary: 'ECB officials emphasize commitment to bringing inflation to target.',
-        source: 'Financial Times',
-        datetime: '10 hours ago',
-        url: 'https://www.ft.com/world/europe'
-      },
-      {
-        headline: 'Cryptocurrency Markets Stabilize Above Key Technical Levels',
-        summary: 'Bitcoin and major altcoins find support as institutional adoption continues.',
-        source: 'CoinDesk',
-        datetime: '12 hours ago',
-        url: 'https://www.coindesk.com/'
+        url: '#'
       }
     ]
+  }
+
+  const formatPrice = (price) => {
+    if (typeof price !== 'number') return '0.00'
+    
+    if (price >= 1000) {
+      return price.toLocaleString('en-US', { 
+        minimumFractionDigits: 2, 
+        maximumFractionDigits: 2 
+      })
+    }
+    return price.toFixed(2)
+  }
+
+  const formatChange = (change) => {
+    if (typeof change !== 'number') return '+0.00%'
+    
+    const sign = change >= 0 ? '+' : ''
+    return `${sign}${change.toFixed(2)}%`
+  }
+
+  const getChangeColor = (change) => {
+    if (typeof change !== 'number') return 'text-gray-400'
+    return change >= 0 ? 'text-green-400' : 'text-red-400'
   }
 
   if (loading) {
     return (
       <>
         <Navigation />
-        <div className="max-w-7xl mx-auto px-4 py-5">
-          <div className="card p-8 text-center">
-            <div className="text-lg">Loading market news...</div>
-            <div className="mt-4">
-              <div className="w-8 h-8 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            </div>
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+            <p className="text-gray-400">Loading real-time data...</p>
           </div>
         </div>
       </>
@@ -208,361 +177,322 @@ export default function NewsContent() {
   return (
     <>
       <Navigation />
-      <div className="max-w-7xl mx-auto px-4 py-5">
+      <div className="min-h-screen bg-gray-900 text-white p-6">
         
-        {/* Data Source Indicator */}
-        <div className="mb-6">
-          <div className={`card p-4 border ${isLiveMode ? 'border-green-400/30 bg-green-500/10' : 'border-blue-400/30 bg-blue-500/10'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full animate-pulse ${isLiveMode ? 'bg-green-400' : 'bg-blue-400'}`}></div>
-              <div>
-                <div className={`font-semibold ${isLiveMode ? 'text-green-400' : 'text-blue-400'}`}>
-                  {isLiveMode ? '📡 Live Market Data' : '📊 Demo Mode Active'}
-                </div>
-                <div className="text-sm ghost">
-                  {isLiveMode ? 'Real-time data from financial APIs' : 'Professional demo with realistic market data - Auto-refreshing every 30 seconds'}
-                </div>
+        {/* Status Banner */}
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className={`p-4 rounded-lg border ${
+            isLiveMode 
+              ? 'bg-green-500/10 border-green-400/20 text-green-400' 
+              : 'bg-yellow-500/10 border-yellow-400/20 text-yellow-400'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-2 h-2 rounded-full ${
+                  isLiveMode ? 'bg-green-400' : 'bg-yellow-400'
+                } animate-pulse`}></div>
+                <span className="font-medium">
+                  {isLiveMode ? '🔴 Live Financial Data & Breaking News' : '🟡 Demo Mode'}
+                </span>
+                {lastUpdated && (
+                  <span className="text-sm opacity-80">
+                    • Updated: {new Date(lastUpdated).toLocaleTimeString()}
+                  </span>
+                )}
+                {dataSource && (
+                  <span className="text-sm opacity-80">
+                    • Source: {dataSource === 'live_apis' ? 'Finnhub + FMP APIs' : dataSource}
+                  </span>
+                )}
               </div>
+              
+              <button
+                onClick={handleManualRefresh}
+                disabled={refreshing}
+                className="px-3 py-1 text-sm bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/30 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {refreshing ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 animate-spin rounded-full border border-cyan-400 border-t-transparent"></div>
+                    Refreshing...
+                  </div>
+                ) : (
+                  '🔄 Refresh Now'
+                )}
+              </button>
             </div>
+            
+            {error && (
+              <div className="mt-2 text-sm text-red-400">
+                ⚠️ {error}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Market Snapshot - FIXED PRICES */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Market Snapshot</h2>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs ghost">S&P 500</span>
-                <span className={`text-xs font-medium ${marketData?.spy?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.spy?.changePercent >= 0 ? '+' : ''}{marketData?.spy?.changePercent?.toFixed(2) || '-0.62'}%
-                </span>
+        {/* Breaking News Alert */}
+        {breakingNews.length > 0 && (
+          <section className="max-w-7xl mx-auto mb-8">
+            <div className="bg-red-500/10 border border-red-400/30 rounded-lg p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse"></div>
+                <h2 className="text-xl font-bold text-red-400">🚨 Breaking News</h2>
               </div>
-              <div className="text-2xl font-bold">{marketData?.spy?.price?.toFixed(2) || '6,223.00'}</div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {breakingNews.map((article, index) => (
+                  <div key={index} className="bg-gray-800/50 p-4 rounded-lg border border-red-400/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-red-400 font-medium">{article.source}</span>
+                      <span className="text-sm text-gray-400">{article.datetime}</span>
+                    </div>
+                    <h4 className="font-semibold mb-2 text-sm leading-snug">
+                      {article.headline}
+                    </h4>
+                    {article.ticker && (
+                      <div className="text-xs text-cyan-400 mb-2">
+                        ${article.ticker}
+                      </div>
+                    )}
+                    <a 
+                      href={article.url}
+                      className="text-sm text-red-400 hover:text-red-300 font-medium inline-flex items-center gap-1"
+                    >
+                      Read more →
+                    </a>
+                  </div>
+                ))}
+              </div>
             </div>
+          </section>
+        )}
+
+        {/* Market Snapshot */}
+        <section className="max-w-7xl mx-auto mb-8">
+          <h2 className="text-2xl font-bold mb-6 text-center">Market Snapshot</h2>
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             
-            <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs ghost">NASDAQ</span>
-                <span className={`text-xs font-medium ${marketData?.nasdaq?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.nasdaq?.changePercent >= 0 ? '+' : ''}{marketData?.nasdaq?.changePercent?.toFixed(2) || '+0.04'}%
-                </span>
+            {/* S&P 500 */}
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">S&P 500</div>
+              <div className="text-xl font-bold mb-1">
+                {formatPrice(marketData?.spy?.price)}
               </div>
-              <div className="text-2xl font-bold">{marketData?.nasdaq?.price?.toFixed(1) || '20,108.9'}</div>
-            </div>
-            
-            <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs ghost">BTC-USD</span>
-                <span className={`text-xs font-medium ${marketData?.btc?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.btc?.changePercent >= 0 ? '+' : ''}{marketData?.btc?.changePercent?.toFixed(2) || '+0.54'}%
-                </span>
+              <div className={`text-sm font-medium ${getChangeColor(marketData?.spy?.change)}`}>
+                {formatChange(marketData?.spy?.change)}
               </div>
-              <div className="text-2xl font-bold">{marketData?.btc?.price?.toFixed(0) || '97,758'}</div>
             </div>
-            
-            <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs ghost">Gold</span>
-                <span className={`text-xs font-medium ${marketData?.gold?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.gold?.changePercent >= 0 ? '+' : ''}{marketData?.gold?.changePercent?.toFixed(2) || '-0.76'}%
-                </span>
+
+            {/* NASDAQ */}
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">NASDAQ</div>
+              <div className="text-xl font-bold mb-1">
+                {formatPrice(marketData?.nasdaq?.price)}
               </div>
-              <div className="text-2xl font-bold">{marketData?.gold?.price?.toFixed(2) || '2,614.58'}</div>
-            </div>
-            
-            <div className="card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs ghost">Oil WTI</span>
-                <span className={`text-xs font-medium ${marketData?.oil?.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {marketData?.oil?.changePercent >= 0 ? '+' : ''}{marketData?.oil?.changePercent?.toFixed(2) || '-2.07'}%
-                </span>
+              <div className={`text-sm font-medium ${getChangeColor(marketData?.nasdaq?.change)}`}>
+                {formatChange(marketData?.nasdaq?.change)}
               </div>
-              <div className="text-2xl font-bold">{marketData?.oil?.price?.toFixed(2) || '70.92'}</div>
             </div>
+
+            {/* Bitcoin */}
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">BTC-USD</div>
+              <div className="text-xl font-bold mb-1">
+                {formatPrice(marketData?.btc?.price)}
+              </div>
+              <div className={`text-sm font-medium ${getChangeColor(marketData?.btc?.change)}`}>
+                {formatChange(marketData?.btc?.change)}
+              </div>
+            </div>
+
+            {/* Gold */}
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">Gold</div>
+              <div className="text-xl font-bold mb-1">
+                {formatPrice(marketData?.gold?.price)}
+              </div>
+              <div className={`text-sm font-medium ${getChangeColor(marketData?.gold?.change)}`}>
+                {formatChange(marketData?.gold?.change)}
+              </div>
+            </div>
+
+            {/* Oil */}
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">Oil WTI</div>
+              <div className="text-xl font-bold mb-1">
+                {formatPrice(marketData?.oil?.price)}
+              </div>
+              <div className={`text-sm font-medium ${getChangeColor(marketData?.oil?.change)}`}>
+                {formatChange(marketData?.oil?.change)}
+              </div>
+            </div>
+
           </div>
         </section>
 
         {/* Latest Financial News */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Latest Financial News</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {news.map((article, i) => (
-              <article key={i} className="news-card p-4 rounded-xl">
-                <div className="text-xs ghost mb-2">{article.datetime} · {article.source}</div>
-                <h3 className="font-semibold mb-2 leading-relaxed">{article.headline}</h3>
-                <p className="text-sm ghost mb-3 leading-relaxed">{article.summary}</p>
+        <section className="max-w-7xl mx-auto mb-8">
+          <h3 className="text-xl font-semibold mb-6">Latest Financial News</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {generalNews.map((article, index) => (
+              <div key={index} className="card p-6 hover:bg-gray-800/50 transition-colors">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-cyan-400 font-medium">{article.source}</span>
+                  <span className="text-sm text-gray-400">{article.datetime}</span>
+                </div>
+                <h4 className="font-semibold mb-2 line-clamp-2 leading-snug">
+                  {article.headline}
+                </h4>
+                <p className="text-sm text-gray-400 line-clamp-3 mb-4">
+                  {article.summary}
+                </p>
+                {article.ticker && (
+                  <div className="text-xs text-cyan-400 mb-2">
+                    Related: ${article.ticker}
+                  </div>
+                )}
                 <a 
-                  href={article.url} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-block"
+                  href={article.url}
+                  className="text-sm text-cyan-400 hover:text-cyan-300 font-medium inline-flex items-center gap-1"
                 >
                   Read more →
                 </a>
-              </article>
+              </div>
             ))}
           </div>
         </section>
 
-        {/* Upcoming Market Events - NO CHINESE TEXT */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Upcoming Market Events</h2>
-          <div className="card p-6">
-            <div className="space-y-4">
-              {/* CRITICAL US EMPLOYMENT DATA - FRIDAY - ENGLISH ONLY */}
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 bg-yellow-500/10 -mx-3 px-3 py-2 rounded-lg">
-                <div>
-                  <div className="font-semibold flex items-center gap-2">
-                    <span className="text-yellow-400">🔥</span>
-                    US Non-Farm Payrolls
-                  </div>
-                  <div className="text-xs ghost">Bureau of Labor Statistics - High Impact</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-yellow-400">Sep 6, 2025</div>
-                  <div className="text-xs ghost">8:30 AM EST</div>
-                </div>
+        {/* Monitored Stocks */}
+        <section className="max-w-7xl mx-auto mb-8">
+          <div className="card p-6 bg-gradient-to-r from-purple-500/5 to-blue-500/5 border-purple-400/20">
+            <h3 className="font-semibold mb-3 text-purple-400">📊 Real-Time Monitoring</h3>
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-300 mb-2">🎯 <strong>Breaking News Detection</strong></p>
+                <p className="text-gray-400">Monitoring AAPL, MSFT, GOOGL, NVDA, TSLA, META, CRM, NFLX, AMD for announcements, earnings, and major events.</p>
               </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-white/10 bg-yellow-500/10 -mx-3 px-3 py-2 rounded-lg">
-                <div>
-                  <div className="font-semibold flex items-center gap-2">
-                    <span className="text-yellow-400">🔥</span>
-                    US Unemployment Rate
-                  </div>
-                  <div className="text-xs ghost">Bureau of Labor Statistics - High Impact</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm font-semibold text-yellow-400">Sep 6, 2025</div>
-                  <div className="text-xs ghost">8:30 AM EST</div>
-                </div>
+              <div>
+                <p className="text-gray-300 mb-2">⚡ <strong>30-Second Refresh</strong></p>
+                <p className="text-gray-400">Page automatically checks for breaking news every 30 seconds. Market data updates every 2 minutes.</p>
               </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div>
-                  <div className="font-semibold">Fed Interest Rate Decision</div>
-                  <div className="text-xs ghost">Federal Reserve FOMC Meeting</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Sep 18, 2025</div>
-                  <div className="text-xs ghost">2:00 PM EST</div>
-                </div>
+              <div>
+                <p className="text-gray-300 mb-2">🔔 <strong>Alert Keywords</strong></p>
+                <p className="text-gray-400">Tracks: earnings, acquisitions, partnerships, FDA approvals, stock splits, investigations, CEO changes.</p>
               </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div>
-                  <div className="font-semibold">Apple iPhone 17 Launch Event</div>
-                  <div className="text-xs ghost">Product Announcement</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Sep 15, 2025</div>
-                  <div className="text-xs ghost">1:00 PM EST</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div>
-                  <div className="font-semibold">Consumer Price Index (CPI)</div>
-                  <div className="text-xs ghost">Bureau of Labor Statistics</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Sep 12, 2025</div>
-                  <div className="text-xs ghost">8:30 AM EST</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div>
-                  <div className="font-semibold">NVIDIA GTC AI Conference</div>
-                  <div className="text-xs ghost">AI Technology Announcements</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Oct 28, 2025</div>
-                  <div className="text-xs ghost">10:00 AM EST</div>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="font-semibold">Tesla Robotaxi Day</div>
-                  <div className="text-xs ghost">Autonomous Vehicle Showcase</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm">Oct 10, 2025</div>
-                  <div className="text-xs ghost">7:00 PM EST</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Market Analysis */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Market Analysis</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="card p-6">
-              <h3 className="font-semibold mb-3 text-cyan-400">📊 Weekly Market Summary</h3>
-              <p className="text-sm ghost mb-4">
-                September has brought renewed optimism to equity markets as investors weigh Federal Reserve policy signals against continued economic resilience. Technology stocks have led gains with AI infrastructure spending showing no signs of slowing.
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400 mt-1">▲</span>
-                  <span>S&P 500 up 2.1% week-to-date on tech strength</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400 mt-1">▲</span>
-                  <span>NASDAQ leading with 3.2% weekly gain</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-yellow-400 mt-1">●</span>
-                  <span>Energy sector mixed on supply concerns</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-400 mt-1">▲</span>
-                  <span>Bitcoin reclaiming $95K+ technical level</span>
-                </li>
-              </ul>
-            </div>
-            
-            <div className="card p-6">
-              <h3 className="font-semibold mb-3 text-purple-400">🎯 Key Themes This Week</h3>
-              <div className="space-y-4 text-sm">
-                <div>
-                  <div className="font-medium mb-1">🔥 Jobs Report Friday (Critical)</div>
-                  <div className="text-ghost">US Non-Farm Payrolls and Unemployment Rate will drive Fed policy expectations</div>
-                </div>
-                <div>
-                  <div className="font-medium mb-1">AI Infrastructure Boom</div>
-                  <div className="text-ghost">Continued enterprise AI adoption driving hardware and cloud demand</div>
-                </div>
-                <div>
-                  <div className="font-medium mb-1">Fed Policy Uncertainty</div>
-                  <div className="text-ghost">Markets pricing in 25bp cut probability for September meeting</div>
-                </div>
-                <div>
-                  <div className="font-medium mb-1">Earnings Season Prep</div>
-                  <div className="text-ghost">Q3 expectations remain elevated for major tech companies</div>
-                </div>
-                <div>
-                  <div className="font-medium mb-1">Geopolitical Watch</div>
-                  <div className="text-ghost">China economic data and trade developments in focus</div>
-                </div>
+              <div>
+                <p className="text-gray-300 mb-2">📈 <strong>Live Market Data</strong></p>
+                <p className="text-gray-400">Real-time prices from Finnhub API for major indices, crypto, commodities.</p>
               </div>
             </div>
           </div>
         </section>
 
         {/* Sector Performance */}
-        <section className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Sector Performance (5 Days)</h2>
-          <div className="card p-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-3 text-green-400">📈 Top Performers</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Technology</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-400 rounded-full" style={{width: '85%'}}></div>
-                      </div>
-                      <span className="text-green-400 text-sm font-medium">+3.2%</span>
+        <section className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            {/* Market Movers */}
+            <div className="card p-6">
+              <h3 className="font-semibold mb-4">📈 Market Movers</h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Technology</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-400 rounded-full" style={{width: '75%'}}></div>
                     </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Communication Services</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-400 rounded-full" style={{width: '70%'}}></div>
-                      </div>
-                      <span className="text-green-400 text-sm font-medium">+2.8%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Consumer Discretionary</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-400 rounded-full" style={{width: '60%'}}></div>
-                      </div>
-                      <span className="text-green-400 text-sm font-medium">+2.1%</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Healthcare</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-green-400 rounded-full" style={{width: '45%'}}></div>
-                      </div>
-                      <span className="text-green-400 text-sm font-medium">+1.4%</span>
-                    </div>
+                    <span className="text-green-400 text-sm font-medium">+2.3%</span>
                   </div>
                 </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium mb-3 text-red-400">📉 Underperformers</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Energy</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-red-400 rounded-full" style={{width: '40%'}}></div>
-                      </div>
-                      <span className="text-red-400 text-sm font-medium">-1.8%</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Healthcare</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-400 rounded-full" style={{width: '60%'}}></div>
                     </div>
+                    <span className="text-green-400 text-sm font-medium">+1.8%</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Real Estate</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-red-400 rounded-full" style={{width: '35%'}}></div>
-                      </div>
-                      <span className="text-red-400 text-sm font-medium">-1.2%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Financials</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-400 rounded-full" style={{width: '45%'}}></div>
                     </div>
+                    <span className="text-green-400 text-sm font-medium">+1.2%</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Utilities</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-red-400 rounded-full" style={{width: '25%'}}></div>
-                      </div>
-                      <span className="text-red-400 text-sm font-medium">-0.8%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Energy</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-red-400 rounded-full" style={{width: '35%'}}></div>
                     </div>
+                    <span className="text-red-400 text-sm font-medium">-1.2%</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Materials</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
-                        <div className="h-full bg-yellow-400 rounded-full" style={{width: '20%'}}></div>
-                      </div>
-                      <span className="text-yellow-400 text-sm font-medium">-0.3%</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Utilities</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-red-400 rounded-full" style={{width: '25%'}}></div>
                     </div>
+                    <span className="text-red-400 text-sm font-medium">-0.8%</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Materials</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-16 h-2 bg-gray-700 rounded-full overflow-hidden">
+                      <div className="h-full bg-yellow-400 rounded-full" style={{width: '20%'}}></div>
+                    </div>
+                    <span className="text-yellow-400 text-sm font-medium">-0.3%</span>
                   </div>
                 </div>
               </div>
             </div>
+
+            {/* Upcoming Events */}
+            <div className="card p-6">
+              <h3 className="font-semibold mb-4">📅 Upcoming Market Events</h3>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 bg-yellow-500/10 border border-yellow-400/20 rounded-lg">
+                  <div>
+                    <div className="font-medium text-sm">🔥 US Non-Farm Payrolls</div>
+                    <div className="text-xs text-gray-400">Bureau of Labor Statistics - High Impact</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">Sep 6, 2025</div>
+                    <div className="text-xs text-gray-400">8:30 AM EST</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-yellow-500/10 border border-yellow-400/20 rounded-lg">
+                  <div>
+                    <div className="font-medium text-sm">🔥 US Unemployment Rate</div>
+                    <div className="text-xs text-gray-400">Bureau of Labor Statistics - High Impact</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">Sep 6, 2025</div>
+                    <div className="text-xs text-gray-400">8:30 AM EST</div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+                  <div>
+                    <div className="font-medium text-sm">Fed Interest Rate Decision</div>
+                    <div className="text-xs text-gray-400">Federal Reserve FOMC Meeting</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-medium">Sep 18, 2025</div>
+                    <div className="text-xs text-gray-400">2:00 PM EST</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
           </div>
         </section>
-
-        {/* How to Enable Live Data */}
-        {!isLiveMode && (
-          <section className="mt-8">
-            <div className="card p-6 bg-gradient-to-r from-green-500/5 to-blue-500/5 border-green-400/20">
-              <h3 className="font-semibold mb-3 text-green-400">🚀 Enable Live Market Data</h3>
-              <p className="text-sm ghost mb-4">
-                Currently showing professional demo data. To get real-time market data and economic events:
-              </p>
-              <ol className="text-sm space-y-2 list-decimal list-inside ghost">
-                <li>Set <code className="bg-gray-800 px-2 py-1 rounded">DEMO_MODE = false</code> in <code>lib/api.js</code></li>
-                <li>Add market news API endpoint: <code className="bg-gray-800 px-2 py-1 rounded">/api/news/market</code></li>
-                <li>Configure financial data APIs (Alpha Vantage, Finnhub, or IEX Cloud)</li>
-                <li>Add economic calendar API for events like Non-Farm Payrolls</li>
-              </ol>
-            </div>
-          </section>
-        )}
 
       </div>
     </>
