@@ -129,7 +129,7 @@ export default function NewsContent() {
   }
 
   const getChangeColor = (change) => {
-    if (typeof change !== 'number') return 'text-gray-400 dark:text-gray-400'
+    if (typeof change !== 'number') return 'text-gray-400'
     return change >= 0 ? 'text-green-400' : 'text-red-400'
   }
 
@@ -156,7 +156,7 @@ export default function NewsContent() {
     return (
       <>
         <Navigation />
-        <div className="min-h-screen bg-gray-900 dark:bg-gray-900 text-white flex items-center justify-center">
+        <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
             <p className="text-gray-400">Loading real-time data...</p>
@@ -169,7 +169,7 @@ export default function NewsContent() {
   return (
     <>
       <Navigation />
-      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-6 pb-12">
+      <div className="min-h-screen bg-gray-900 text-white p-6 pb-12">
         
         {/* Status Banner */}
         <div className="max-w-7xl mx-auto mb-6">
@@ -231,16 +231,16 @@ export default function NewsContent() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {breakingNews.slice(0, 6).map((article, index) => (
-                  <div key={index} className="bg-gray-800/50 dark:bg-gray-800/50 bg-gray-100/50 p-4 rounded-lg border border-red-400/20">
+                  <div key={index} className="bg-gray-800/50 p-4 rounded-lg border border-red-400/20">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-red-400 font-medium">{article.source}</span>
-                      <span className="text-sm text-gray-400 dark:text-gray-400">{article.datetime}</span>
+                      <span className="text-sm text-gray-400">{article.datetime}</span>
                     </div>
-                    <h4 className="font-semibold mb-2 text-sm leading-snug line-clamp-2 text-gray-900 dark:text-white">
+                    <h4 className="font-semibold mb-2 text-sm leading-snug line-clamp-2">
                       {article.headline}
                     </h4>
                     {isSummaryUseful(article.headline, article.summary) && (
-                      <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
+                      <p className="text-xs text-gray-400 line-clamp-2 mb-3">
                         {article.summary}
                       </p>
                     )}
@@ -261,13 +261,13 @@ export default function NewsContent() {
 
         {/* Market Snapshot */}
         <section className="max-w-7xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Market Snapshot</h2>
+          <h2 className="text-2xl font-bold mb-6">Market Snapshot</h2>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             
             {/* S&P 500 */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">S&P 500</div>
-              <div className="text-xl font-bold mb-1 text-gray-900 dark:text-white">
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">S&P 500</div>
+              <div className="text-xl font-bold mb-1">
                 {formatPrice(marketData?.spy?.price)}
               </div>
               <div className={`text-sm font-medium ${getChangeColor(marketData?.spy?.change)}`}>
@@ -276,9 +276,9 @@ export default function NewsContent() {
             </div>
 
             {/* NASDAQ */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">NASDAQ</div>
-              <div className="text-xl font-bold mb-1 text-gray-900 dark:text-white">
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">NASDAQ</div>
+              <div className="text-xl font-bold mb-1">
                 {formatPrice(marketData?.nasdaq?.price)}
               </div>
               <div className={`text-sm font-medium ${getChangeColor(marketData?.nasdaq?.change)}`}>
@@ -287,9 +287,9 @@ export default function NewsContent() {
             </div>
 
             {/* Bitcoin */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">BTC-USD</div>
-              <div className="text-xl font-bold mb-1 text-gray-900 dark:text-white">
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">BTC-USD</div>
+              <div className="text-xl font-bold mb-1">
                 {formatPrice(marketData?.btc?.price)}
               </div>
               <div className={`text-sm font-medium ${getChangeColor(marketData?.btc?.change)}`}>
@@ -298,9 +298,9 @@ export default function NewsContent() {
             </div>
 
             {/* Gold */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Gold</div>
-              <div className="text-xl font-bold mb-1 text-gray-900 dark:text-white">
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">Gold</div>
+              <div className="text-xl font-bold mb-1">
                 {formatPrice(marketData?.gold?.price)}
               </div>
               <div className={`text-sm font-medium ${getChangeColor(marketData?.gold?.change)}`}>
@@ -309,9 +309,9 @@ export default function NewsContent() {
             </div>
 
             {/* Oil */}
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Oil WTI</div>
-              <div className="text-xl font-bold mb-1 text-gray-900 dark:text-white">
+            <div className="card p-4 text-center">
+              <div className="text-sm text-gray-400 mb-1">Oil WTI</div>
+              <div className="text-xl font-bold mb-1">
                 {formatPrice(marketData?.oil?.price)}
               </div>
               <div className={`text-sm font-medium ${getChangeColor(marketData?.oil?.change)}`}>
@@ -324,20 +324,20 @@ export default function NewsContent() {
 
         {/* Latest Financial News */}
         <section className="max-w-7xl mx-auto mb-8">
-          <h3 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Latest Financial News</h3>
+          <h3 className="text-xl font-semibold mb-6">Latest Financial News</h3>
           {generalNews.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {generalNews.slice(0, 9).map((article, index) => (
-                <div key={index} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                <div key={index} className="card p-6 hover:bg-gray-800/50 transition-colors">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm text-cyan-400 font-medium">{article.source}</span>
-                    <span className="text-sm text-gray-400 dark:text-gray-400">{article.datetime}</span>
+                    <span className="text-sm text-gray-400">{article.datetime}</span>
                   </div>
-                  <h4 className="font-semibold mb-2 line-clamp-2 leading-snug text-gray-900 dark:text-white">
+                  <h4 className="font-semibold mb-2 line-clamp-2 leading-snug">
                     {article.headline}
                   </h4>
                   {isSummaryUseful(article.headline, article.summary) && (
-                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4">
+                    <p className="text-sm text-gray-400 line-clamp-3 mb-4">
                       {article.summary}
                     </p>
                   )}
@@ -353,8 +353,8 @@ export default function NewsContent() {
               ))}
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 text-center">
-              <p className="text-gray-600 dark:text-gray-400">Loading financial news...</p>
+            <div className="card p-6 text-center">
+              <p className="text-gray-400">Loading financial news...</p>
             </div>
           )}
         </section>
@@ -362,26 +362,26 @@ export default function NewsContent() {
         {/* Upcoming Market Events */}
         {events.length > 0 && (
           <section className="max-w-7xl mx-auto mb-12">
-            <h3 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Upcoming Market Events</h3>
+            <h3 className="text-xl font-semibold mb-6">Upcoming Market Events</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {events.slice(0, 6).map((event, index) => (
                 <div key={index} className={`p-4 rounded-lg border ${
                   event.impact === 'High' 
                     ? 'bg-yellow-500/10 border-yellow-400/20' 
-                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600'
+                    : 'bg-gray-800/50 border-gray-600/30'
                 }`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className={`text-sm font-medium ${
-                      event.impact === 'High' ? 'text-yellow-400' : 'text-gray-900 dark:text-white'
+                      event.impact === 'High' ? 'text-yellow-400' : 'text-white'
                     }`}>
                       {event.impact === 'High' ? '🔥 ' : ''}{event.name}
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">{event.date}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">{event.time}</div>
+                      <div className="text-sm font-medium">{event.date}</div>
+                      <div className="text-xs text-gray-400">{event.time}</div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400">
+                  <div className="text-xs text-gray-400">
                     {event.description}
                   </div>
                 </div>
