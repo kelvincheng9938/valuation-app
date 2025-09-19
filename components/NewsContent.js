@@ -154,7 +154,7 @@ export default function NewsContent() {
   return (
     <>
       <Navigation />
-      <div className="min-h-screen bg-gray-900 text-white p-6">
+      <div className="min-h-screen bg-gray-900 text-white p-6 pb-12">
         
         {/* Status Banner */}
         <div className="max-w-7xl mx-auto mb-6">
@@ -357,7 +357,7 @@ export default function NewsContent() {
 
         {/* Upcoming Market Events */}
         {events.length > 0 && (
-          <section className="max-w-7xl mx-auto">
+          <section className="max-w-7xl mx-auto mb-12">
             <h3 className="text-xl font-semibold mb-6">Upcoming Market Events</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {events.slice(0, 6).map((event, index) => (
