@@ -20,6 +20,10 @@ export default function ReportContent() {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [activeSection, setActiveSection] = useState('overview')
   
+  // Company News State
+  const [companyNews, setCompanyNews] = useState([])
+  const [newsLoading, setNewsLoading] = useState(false)
+  
   const searchParams = useSearchParams()
   const searchTimeoutRef = useRef(null)
   const isDemoMode = true // For public launch, this can be set to false when going live
@@ -61,6 +65,9 @@ export default function ReportContent() {
       setTicker(symbol.toUpperCase())
       setUpdateKey(prev => prev + 1)
       
+      // Load company news when stock data loads
+      loadCompanyNews(symbol.toUpperCase())
+      
       // Update URL without page reload
       const url = new URL(window.location)
       url.searchParams.set('ticker', symbol.toUpperCase())
@@ -74,6 +81,48 @@ export default function ReportContent() {
       setLoading(false)
     }
   }
+
+  // Load company-specific news
+  const loadCompanyNews = async (symbol) => {
+    if (!symbol.trim()) return
+    
+    setNewsLoading(true)
+    
+    try {
+      console.log(`🔄 Loading company news for ${symbol}...`)
+      
+      const response = await fetch(`/api/news/company?ticker=${symbol}`, {
+        headers: {
+          'Cache-Control': 'no-cache'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setCompanyNews(data.news || [])
+        console.log(`✅ Loaded ${data.news?.length || 0} news articles for ${symbol}`)
+      } else {
+        throw new Error('Failed to fetch company news')
+      }
+      
+    } catch (error) {
+      console.error(`❌ Failed to load company news for ${symbol}:`, error)
+      setCompanyNews([])
+    } finally {
+      setNewsLoading(false)
+    }
+  }
+
+  // Auto-refresh company news every 3 minutes
+  useEffect(() => {
+    if (ticker) {
+      const newsInterval = setInterval(() => {
+        loadCompanyNews(ticker)
+      }, 3 * 60 * 1000) // 3 minutes
+      
+      return () => clearInterval(newsInterval)
+    }
+  }, [ticker])
 
   // Search functionality
   const handleSearch = (query) => {
@@ -702,11 +751,19 @@ export default function ReportContent() {
               <section>
                 <ErrorBoundary fallback="News section failed to load">
                   <div className="card p-6">
-                    <h3 className="text-lg font-semibold mb-6 text-gray-900 dark:text-white">Latest News</h3>
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Latest Company News</h3>
+                      {newsLoading && (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <div className="w-3 h-3 animate-spin rounded-full border border-cyan-400 border-t-transparent"></div>
+                          Updating...
+                        </div>
+                      )}
+                    </div>
                     
-                    {stockData.news && stockData.news.length > 0 ? (
+                    {companyNews && companyNews.length > 0 ? (
                       <div className="space-y-4">
-                        {stockData.news.map((article, index) => (
+                        {companyNews.map((article, index) => (
                           <div key={index} className="border-l-4 border-cyan-400 pl-4 py-2">
                             <h4 className="font-medium text-gray-900 dark:text-white mb-1">
                               {article.headline}
@@ -733,10 +790,21 @@ export default function ReportContent() {
                     ) : (
                       <div className="text-center py-8">
                         <div className="text-gray-600 dark:text-gray-400 text-sm">
-                          {isDemoMode ? 
-                            `No recent news available in demo for ${ticker}. Major stocks like AAPL, MSFT, GOOGL have sample news articles.`
-                            : `No recent news available for ${ticker}`
+                          {newsLoading 
+                            ? 'Loading latest company news...'
+                            : `Loading latest news for ${ticker}...`
                           }
+                        </div>
+                      </div>
+                    )}
+
+                    {/* News Integration Info */}
+                    {companyNews.length > 0 && (
+                      <div className="mt-6 bg-blue-500/5 rounded-lg p-4 border border-blue-400/10">
+                        <div className="text-xs text-blue-300/70">
+                          📡 <span className="text-blue-400 font-medium">Live News Integration:</span> Company-specific news 
+                          automatically refreshes every 3 minutes with the latest earnings announcements, analyst updates, 
+                          and relevant financial developments for {ticker}.
                         </div>
                       </div>
                     )}
