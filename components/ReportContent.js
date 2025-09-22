@@ -985,3 +985,145 @@ export default function ReportContent() {
                         </div>
                       </div>
                     )}
+                  </div>
+                </ErrorBoundary>
+              </section>
+
+              {/* 6. Latest News - 🔥 ENHANCED WITH LIVE COMPANY NEWS */}
+              <section id="news" className="scroll-mt-24">
+                <ErrorBoundary fallback="News section failed to load">
+                  <div className="card p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-2xl font-bold">Latest Company News</h2>
+                      <div className="flex items-center gap-2 text-sm ghost">
+                        {newsLoading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 border border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-cyan-400">Loading live news...</span>
+                          </div>
+                        ) : newsError ? (
+                          <span className="chip px-2 py-1 text-red-400 text-xs">⚠️ {newsError}</span>
+                        ) : newsDataSource === 'google_news_live' ? (
+                          <span className="chip px-2 py-1 text-green-400 text-xs">🟢 Live Google News</span>
+                        ) : newsDataSource === 'fallback' ? (
+                          <span className="chip px-2 py-1 text-yellow-400 text-xs">🟡 Fallback News</span>
+                        ) : (
+                          <span className="chip px-2 py-1 text-blue-400 text-xs">📰 Static News</span>
+                        )}
+                        <span>{liveNews.length} items</span>
+                      </div>
+                    </div>
+                    
+                    {/* 🔥 ENHANCED: Live Company News Display */}
+                    {liveNews.length > 0 ? (
+                      <div className="space-y-4">
+                        {liveNews.slice(0, 6).map((item, i) => (
+                          <article key={i} className="p-4 rounded-xl border border-white/10 hover:border-cyan-400/40 transition-all duration-200">
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-2">
+                                <div className="text-xs text-cyan-400 font-medium">{item.source}</div>
+                                {item.isBreaking && (
+                                  <span className="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded-full">
+                                    BREAKING
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs ghost">{item.datetime}</div>
+                            </div>
+                            <h3 className="font-semibold mb-2 leading-relaxed">
+                              {item.headline}
+                            </h3>
+                            {item.summary && item.summary !== item.headline && item.summary.length > 20 && (
+                              <p className="text-sm ghost leading-relaxed mb-3">{item.summary}</p>
+                            )}
+                            <a 
+                              href={item.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-cyan-400 text-sm hover:text-cyan-300 transition-colors inline-flex items-center gap-1"
+                            >
+                              Read more 
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          </article>
+                        ))}
+                        
+                        {/* Refresh button for live news */}
+                        {!newsLoading && (
+                          <div className="text-center pt-4">
+                            <button
+                              onClick={() => loadLiveCompanyNews(ticker, stockData?.name)}
+                              className="btn px-4 py-2 rounded-lg text-sm hover:bg-cyan-500/20"
+                            >
+                              🔄 Refresh Company News
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <div className="text-yellow-400 text-4xl mb-4">📰</div>
+                        <div className="text-xl font-medium mb-3">No Recent Company News</div>
+                        <div className="text-ghost mb-4">
+                          {newsLoading 
+                            ? 'Loading live company news...'
+                            : `No recent news available for ${stockData?.name || ticker}`
+                          }
+                        </div>
+                        {!newsLoading && (
+                          <button
+                            onClick={() => loadLiveCompanyNews(ticker, stockData?.name)}
+                            className="btn-primary px-4 py-2 rounded-lg text-sm"
+                          >
+                            🔄 Try Loading Live News
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Live News Integration Notice */}
+                    <div className="mt-6 bg-green-500/5 rounded-lg p-4 border border-green-400/10">
+                      <div className="text-xs text-green-300/70">
+                        🟢 <span className="text-green-400 font-medium">Live Company News:</span> This section now automatically 
+                        fetches the latest company-specific news from Google News, providing real-time updates specifically about {stockData?.name || ticker}. 
+                        News articles are filtered for relevance and automatically refresh when you select different stocks.
+                      </div>
+                    </div>
+                  </div>
+                </ErrorBoundary>
+              </section>
+
+            </main>
+          </div>
+
+          {/* Ready to Go Live Footer */}
+          {isDemoMode && (
+            <div className="mt-12">
+              <div className="card p-6 bg-gradient-to-r from-blue-500/5 to-purple-500/5 border-blue-400/20">
+                <div className="text-center">
+                  <div className="text-blue-400 font-semibold mb-2">🚀 Ready to Go Live?</div>
+                  <div className="text-sm ghost mb-4">
+                    This demo showcases institutional-grade stock analysis with {availableTickers.length || '115'} stocks including Hong Kong listings. 
+                    When you're ready to launch with real-time data, simply switch to live API mode and all features will work with current market data.
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2 text-xs">
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Forward EPS Estimates</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Dynamic P/E Bands</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Peer Comparisons</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Quality Scoring</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Live Company News</span>
+                    <span className="chip px-3 py-1 bg-green-500/20 text-green-400">✓ Bloomberg Data</span>
+                    <span className="chip px-3 py-1 bg-purple-500/20 text-purple-400">✓ EPS Growth Analysis</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </ErrorBoundary>
+    </>
+  )
+}
