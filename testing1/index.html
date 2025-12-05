@@ -3,30 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valuation Pro - Institutional Report (Testing)</title>
+    <title>Valuation Pro - Institutional Report</title>
+
+    <!-- 0. Process Shim (Critical for React on Vercel) -->
+    <script>
+        window.process = { env: { NODE_ENV: 'production' } };
+    </script>
 
     <!-- 1. Libraries -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS (Load before config) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Charts & Icons -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- 2. Config & Styles -->
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        msft: { blue: '#0078D4', dark: '#242424', bg: '#f3f2f1' },
-                        val: { green: '#2ecc71', blue: '#3498db', orange: '#f39c12', red: '#e74c3c', barRed: '#C74634', grayBar: '#b0bec5' }
-                    },
-                    boxShadow: { 'card': '0 4px 12px rgba(0,0,0,0.06)', 'floating': '0 10px 30px rgba(0,0,0,0.06)' },
-                    fontFamily: { sans: ['Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'] }
-                }
+        // Safer Tailwind Config Initialization
+        window.onload = function() {
+            if (window.tailwind) {
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            colors: {
+                                msft: { blue: '#0078D4', dark: '#242424', bg: '#f3f2f1' },
+                                val: { green: '#2ecc71', blue: '#3498db', orange: '#f39c12', red: '#e74c3c', barRed: '#C74634', grayBar: '#b0bec5' }
+                            },
+                            boxShadow: { 'card': '0 4px 12px rgba(0,0,0,0.06)', 'floating': '0 10px 30px rgba(0,0,0,0.06)' },
+                            fontFamily: { sans: ['Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'] }
+                        }
+                    }
+                };
             }
-        }
+        };
     </script>
     <style>
         body { background-color: #f3f2f1; color: #242424; }
@@ -52,7 +66,10 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 3. HELPER FUNCTIONS ---
+        // --- CONSTANTS ---
+        const API_KEY = "692ff0e71412a4.89947654"; // Your Key
+        
+        // --- HELPER FUNCTIONS ---
         const formatNumber = (num) => {
             if (num === null || num === undefined || isNaN(num)) return "N/A";
             const absNum = Math.abs(num);
@@ -66,16 +83,16 @@
             return ((current - previous) / Math.abs(previous) * 100).toFixed(1);
         };
 
-        // --- 4. FALLBACK DATA (Offline/Emergency Database) ---
-        // 包含 TSLA 和 NVDA 的真實備用數據，避免出現 $100 這種離譜價格
+        // --- 4. FALLBACK DATA (OFFLINE DATABASE) ---
+        // High-quality static data for specific tickers to prevent "N/A" or "$100"
         const getFallbackData = (ticker) => {
             const t = ticker.toUpperCase();
             
             // TSLA Backup
             if (t.includes('TSLA')) {
                 return {
-                    name: "Tesla Inc", ticker: "TSLA.US", price: 446.74,
-                    description: "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles, and energy generation and storage systems. (Data Source: Offline Backup)",
+                    name: "Tesla Inc", ticker: "TSLA.US", price: 446.74, // Live price will overwrite this
+                    description: "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles, and energy generation and storage systems. (Data Source: Offline Database)",
                     pe_forward: 151.4, market_cap: 1420000000000, ebitda_margin: 0.145, rating: "Buy", isFallback: true,
                     history: [
                         { year: '2020', val: 1100.0 }, { year: '2021', val: 342.5 },
@@ -85,7 +102,7 @@
                     estimates: [
                         { year: 2025, eps: "2.95", rev: 128500000000, eps_growth: null, rev_growth: null },
                         { year: 2026, eps: "4.43", rev: 156800000000, eps_growth: "50.1", rev_growth: "22.0" },
-                        { year: 2027, eps: "6.66", rev: 194432000000, eps_growth: "50.3", rev_growth: "24.0" }
+                        { year: 2027, eps: "6.66", rev: 194432000000, eps_growth: "50.3", rev_growth: "24.0", isProjected: false }
                     ],
                     multiples: { bear: 60, base: 120, bull: 180 },
                     swot: { s: ["Market Leader"], w: ["High Valuation"], o: ["Robotaxi"], t: ["Competition"] },
@@ -94,11 +111,11 @@
                 };
             }
             
-            // NVDA Backup (Fixing the $100 issue)
+            // NVDA Backup (Corrected Data - No more $100)
             if (t.includes('NVDA')) {
                 return {
-                    name: "NVIDIA Corp", ticker: "NVDA.US", price: 144.00,
-                    description: "NVIDIA Corporation focuses on personal computer (PC) graphics, graphics processing unit (GPU) and also on artificial intelligence (AI). (Data Source: Offline Backup)",
+                    name: "NVIDIA Corp", ticker: "NVDA.US", price: 144.00, // Reference price
+                    description: "NVIDIA Corporation focuses on personal computer (PC) graphics, graphics processing unit (GPU) and also on artificial intelligence (AI). (Data Source: Offline Database)",
                     pe_forward: 38.5, market_cap: 3500000000000, ebitda_margin: 0.55, rating: "Strong Buy", isFallback: true,
                     history: [
                         { year: '2020', val: 85.0 }, { year: '2021', val: 90.5 },
@@ -117,61 +134,50 @@
                 };
             }
 
+            // No generic fallback to avoid "$100" confusion. Returns null to show specific error if unknown ticker.
             return null;
         };
 
-        // --- 5. ROBUST FETCH (CORS Proxy) ---
+        // --- 5. ROBUST FETCH (Vercel Optimized) ---
         const robustFetch = async (url) => {
+            // 1. Try Direct (Fastest)
             try {
-                // Try Direct (Works if API allows or backend)
                 const res = await fetch(url);
                 if (res.ok) return await res.json();
             } catch (e) {
-                // Ignore direct fail, try proxy
+                // console.warn("Direct fetch failed, switching to proxy...");
             }
-            // Try Proxy (Works on Github Pages)
+
+            // 2. Try Stable Proxy (corsproxy.io)
             try {
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
                 const resProxy = await fetch(proxyUrl);
                 if (resProxy.ok) return await resProxy.json();
             } catch (e) {
-                throw new Error("API Unreachable");
+                console.error("Proxy failed");
             }
-            throw new Error("Fetch Error");
+
+            throw new Error("API Unreachable");
         };
 
-        // --- 6. SMART CACHE SYSTEM ("THE DATABASE") ---
+        // --- 6. SMART CACHE SYSTEM ---
         const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 Hours
 
         const saveToDatabase = (ticker, data) => {
             try {
-                const cacheData = {
-                    timestamp: Date.now(),
-                    data: data
-                };
+                const cacheData = { timestamp: Date.now(), data: data };
                 localStorage.setItem(`vp_db_${ticker}`, JSON.stringify(cacheData));
-                console.log(`Saved ${ticker} to local database.`);
-            } catch (e) {
-                console.warn("Database save failed (Storage full?)");
-            }
+            } catch (e) {}
         };
 
         const loadFromDatabase = (ticker) => {
             try {
                 const cached = localStorage.getItem(`vp_db_${ticker}`);
                 if (!cached) return null;
-                
                 const { timestamp, data } = JSON.parse(cached);
-                // Check if expired
-                if (Date.now() - timestamp > CACHE_DURATION) {
-                    console.log(`Database entry for ${ticker} expired.`);
-                    return null;
-                }
-                console.log(`Loaded ${ticker} from local database.`);
+                if (Date.now() - timestamp > CACHE_DURATION) return null;
                 return data;
-            } catch (e) {
-                return null;
-            }
+            } catch (e) { return null; }
         };
 
         // --- COMPONENTS ---
@@ -192,7 +198,7 @@
                     </div>
                     <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-md">
                         <div className="relative w-full">
-                            <input type="text" className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-msft-blue transition" placeholder="Enter Ticker (e.g. TSLA)" value={input} onChange={(e) => setInput(e.target.value)} />
+                            <input type="text" className="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:border-msft-blue transition" placeholder="Enter Ticker (e.g. NVDA)" value={input} onChange={(e) => setInput(e.target.value)} />
                             <i data-lucide="search" className="absolute right-3 top-2.5 text-gray-400 w-5 h-5"></i>
                         </div>
                         <button type="submit" className="bg-msft-blue text-white px-6 py-2 rounded font-bold hover:bg-blue-700 transition">Analysis</button>
@@ -205,8 +211,8 @@
             <div className="bg-[#f0f6ff] border border-[#cce4ff] p-6 rounded-md mb-8 border-l-[5px] border-l-msft-blue text-msft-dark shadow-sm">
                 <div className="flex justify-between items-start">
                     <strong className="block text-lg mb-4 text-msft-blue">⚡ 核心洞察 (Executive Summary)</strong>
-                    {data.isFallback && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Offline Data</span>}
-                    {data.fromCache && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Loaded from DB Cache</span>}
+                    {data.isFallback && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Offline Data Mode</span>}
+                    {data.fromCache && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Cached Data</span>}
                 </div>
                 <p className="mb-4">
                     <strong>估值視角：</strong> {data.ticker} 當前價格為 <strong>${data.price}</strong>。
@@ -333,57 +339,57 @@
             const [error, setError] = useState(null);
             const [ticker, setTicker] = useState("TSLA");
 
-            const API_KEY = "692ff0e71412a4.89947654"; // YOUR KEY
-
             const fetchData = async (sym) => {
                 setLoading(true); setError(null);
                 const cleanSym = sym.toUpperCase();
                 
                 try {
-                    // PLAN STEP 1: Live Price (Always Fetch)
-                    // 使用 CORS Proxy，如果失敗，會在 catch 塊中使用 DB Cache 的舊價格（如果有的話）
+                    // 1. LIVE PRICE (Always Fetch from API via Proxy)
                     let currentPrice = 0;
                     try {
+                        // Direct fetch may fail on Vercel due to CORS, so robustFetch will try proxy
                         const priceRes = await robustFetch(`https://eodhd.com/api/real-time/${cleanSym}?api_token=${API_KEY}&fmt=json`);
                         currentPrice = priceRes.close || priceRes.Price;
                     } catch(e) {
-                        console.warn("Live price fetch failed, will try to use cache or fallback");
+                        console.warn("Live price fetch failed, using fallback if available");
                     }
 
-                    // PLAN STEP 2: Check "Database" (LocalStorage)
-                    // 如果數據存在且新鮮（<24小時），直接使用，只更新 Live Price
+                    // 2. CHECK CACHE (Your "Database")
                     const cachedData = loadFromDatabase(cleanSym);
                     if (cachedData) {
-                        console.log("Using Cached Data for Fundamentals");
+                        console.log("Hit Cache");
                         if (currentPrice > 0) {
-                            cachedData.price = currentPrice;
-                            // Recalculate Current PE
-                            if (cachedData.estimates[0].eps) {
+                            cachedData.price = currentPrice; // Update with live price
+                            // Re-calc current PE
+                            if (cachedData.estimates && cachedData.estimates[0].eps) {
                                 cachedData.pe_forward = (currentPrice / cachedData.estimates[0].eps).toFixed(1);
                             }
                         }
                         cachedData.fromCache = true;
                         setData(cachedData);
                         setLoading(false);
-                        return; // Done! No need to fetch fundamentals
+                        return;
                     }
 
-                    // PLAN STEP 3: If not in DB, Fetch from EOD (via Proxy)
-                    console.log("Cache miss or expired, fetching from EOD...");
-                    
+                    // 3. FETCH FUNDAMENTALS (If cache miss)
                     let fundData, histPriceData;
                     
-                    // Fallback Trigger Logic
                     try {
                         fundData = await robustFetch(`https://eodhd.com/api/fundamentals/${cleanSym}?api_token=${API_KEY}&fmt=json`);
                         histPriceData = await robustFetch(`https://eodhd.com/api/eod/${cleanSym}?fmt=json&from=2020-01-01&period=d&api_token=${API_KEY}`);
                     } catch (e) {
-                        // Critical Fail -> Go to Fallback Data (Hardcoded Backup)
-                        console.warn("API Fail -> Fallback");
-                        throw new Error("API Fetch Failed");
+                        // Force Fallback if API fails
+                        console.warn("API Failed, using Offline Backup");
+                        const backup = getFallbackData(cleanSym);
+                        if (backup) {
+                            if(currentPrice > 0) backup.price = currentPrice; // Update backup with live price if available
+                            setData(backup);
+                            return;
+                        }
+                        throw new Error("Data Unavailable");
                     }
 
-                    // --- DATA PROCESSING (Logic to build the DB entry) ---
+                    // --- DATA PROCESSING ---
                     const highlights = fundData.Highlights || {};
                     let earningsTrend = fundData.Earnings?.Trend || {};
                     const incomeHist = fundData.Financials?.Income_Statement?.yearly || {};
@@ -395,6 +401,7 @@
 
                     const curYear = new Date().getFullYear();
 
+                    // Estimates Logic
                     const getHybridEstimate = (targetYear) => {
                         let totalEPS = 0, totalRev = 0, quartersFound = 0;
                         Object.values(incomeQuart).forEach(q => {
@@ -460,10 +467,18 @@
                     const currentFwdPE = est1.eps ? (currentPrice / est1.eps).toFixed(1) : "N/A";
                     history.push({ year: 'Now', val: currentFwdPE, type: 'current' });
 
-                    // --- DATA QUALITY GUARD ---
-                    // If calculated data is bad, THROW to trigger fallback
+                    // --- CIRCUIT BREAKER ---
+                    // If calculated data is trash (too many N/As), use Backup
                     const validHistory = history.filter(h => h.val !== null).length;
-                    if (validHistory < 3) throw new Error("Data Quality Guard: Too many N/As");
+                    if (validHistory < 3 && (cleanSym.includes('TSLA') || cleanSym.includes('NVDA'))) {
+                        console.warn("Data quality poor, switching to backup");
+                        const backup = getFallbackData(cleanSym);
+                        if (backup) {
+                            if(currentPrice > 0) backup.price = currentPrice;
+                            setData(backup);
+                            return;
+                        }
+                    }
 
                     const validPEs = history.map(h => parseFloat(h.val)).filter(v => !isNaN(v) && v > 0 && v < 500); 
                     let multiples = { bear: 15, base: 25, bull: 35 }; 
@@ -483,27 +498,21 @@
                         supply_chain: `graph LR; A-->B`, ecosystem: `graph TD; A-->B`
                     };
                     
-                    // SAVE TO DB (CACHE)
                     saveToDatabase(cleanSym, processed);
-                    
                     setData(processed);
 
                 } catch (err) {
-                    console.warn("Switching to Fallback Data:", err.message);
-                    const fallback = getFallbackData(cleanSym);
-                    if (fallback) {
-                        // Try to at least update Price if available
-                        // We fetch price separately in try block, but if that failed, we assume fallback price
-                        setData(fallback);
-                    }
-                    else setError("No data available.");
+                    console.error("Final Error Catch", err);
+                    setError("Service Unavailable");
                 } finally {
                     setLoading(false);
                 }
             };
 
             useEffect(() => { fetchData(ticker); }, [ticker]);
-            useEffect(() => { lucide.createIcons(); if(data && window.mermaid) mermaid.init(); }, [data]);
+            useEffect(() => {
+                try { lucide.createIcons(); if(data && window.mermaid) mermaid.init(); } catch(e) {}
+            }, [data]);
 
             return (
                 <div className="min-h-screen pb-20 max-w-[1200px] mx-auto bg-white my-8 rounded-lg shadow-floating p-12">
@@ -512,7 +521,7 @@
                      data ? (
                         <div className="mt-8 animate-fade-in">
                             <div className="flex justify-between items-end mb-8 border-b-4 border-gray-100 pb-4">
-                                <div><h1 className="text-4xl text-msft-blue font-bold mb-2">{data.name}</h1><span className="text-gray-500 text-lg">Institutional Report V16 | Source: EODHD & Consensus</span></div>
+                                <div><h1 className="text-4xl text-msft-blue font-bold mb-2">{data.name}</h1><span className="text-gray-500 text-lg">Institutional Report V17 | Source: DB + Live</span></div>
                                 <div className="text-right"><span className="text-3xl font-bold text-msft-dark">${data.price}</span><span className="block text-sm text-gray-500">Live Market Price</span></div>
                             </div>
                             <ExecSummary data={data} />
@@ -526,7 +535,7 @@
                             <SWOT swot={data.swot} />
                             <div className="mt-16 text-center text-gray-400 text-sm border-t border-gray-100 pt-8">Generated by Valuation Pro</div>
                         </div>
-                    ) : <div className="text-center mt-20">No Data</div>}
+                    ) : <div className="text-center mt-20">No Data Found or API Error</div>}
                 </div>
             );
         };
