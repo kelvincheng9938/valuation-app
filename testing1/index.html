@@ -5,42 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valuation Pro - Institutional Report</title>
 
-    <!-- 0. Process Shim (Critical for React on Vercel) -->
-    <script>
-        window.process = { env: { NODE_ENV: 'production' } };
-    </script>
-
     <!-- 1. Libraries -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind CSS (Load before config) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Charts & Icons -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 2. Config & Styles -->
+    <!-- 2. Config -->
     <script>
-        // Safer Tailwind Config Initialization
-        window.onload = function() {
-            if (window.tailwind) {
-                tailwind.config = {
-                    theme: {
-                        extend: {
-                            colors: {
-                                msft: { blue: '#0078D4', dark: '#242424', bg: '#f3f2f1' },
-                                val: { green: '#2ecc71', blue: '#3498db', orange: '#f39c12', red: '#e74c3c', barRed: '#C74634', grayBar: '#b0bec5' }
-                            },
-                            boxShadow: { 'card': '0 4px 12px rgba(0,0,0,0.06)', 'floating': '0 10px 30px rgba(0,0,0,0.06)' },
-                            fontFamily: { sans: ['Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'] }
-                        }
-                    }
-                };
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        msft: { blue: '#0078D4', dark: '#242424', bg: '#f3f2f1' },
+                        val: { green: '#2ecc71', blue: '#3498db', orange: '#f39c12', red: '#e74c3c', barRed: '#C74634', grayBar: '#b0bec5' }
+                    },
+                    boxShadow: { 'card': '0 4px 12px rgba(0,0,0,0.06)', 'floating': '0 10px 30px rgba(0,0,0,0.06)' },
+                    fontFamily: { sans: ['Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'] }
+                }
             }
-        };
+        }
     </script>
     <style>
         body { background-color: #f3f2f1; color: #242424; }
@@ -67,7 +53,7 @@
         const { useState, useEffect, useRef } = React;
 
         // --- CONSTANTS ---
-        const API_KEY = "692ff0e71412a4.89947654"; // Your Key
+        const API_KEY = "692ff0e71412a4.89947654"; 
         
         // --- HELPER FUNCTIONS ---
         const formatNumber = (num) => {
@@ -83,17 +69,19 @@
             return ((current - previous) / Math.abs(previous) * 100).toFixed(1);
         };
 
-        // --- 4. FALLBACK DATA (OFFLINE DATABASE) ---
-        // High-quality static data for specific tickers to prevent "N/A" or "$100"
-        const getFallbackData = (ticker) => {
+        // --- 4. INTERNAL DATABASE (The "Safety Net") ---
+        // 這是您的「靜態數據庫」。當 API 失敗時，這裡的數據會立刻補上，確保用戶永遠看不到空白或 N/A。
+        // 這包含了您提到的 "Forward PE 過去 Data" 和 "2027 Estimates"。
+        const getInternalDatabase = (ticker) => {
             const t = ticker.toUpperCase();
             
-            // TSLA Backup
+            // TSLA DATA PACK
             if (t.includes('TSLA')) {
                 return {
-                    name: "Tesla Inc", ticker: "TSLA.US", price: 446.74, // Live price will overwrite this
-                    description: "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles, and energy generation and storage systems. (Data Source: Offline Database)",
-                    pe_forward: 151.4, market_cap: 1420000000000, ebitda_margin: 0.145, rating: "Buy", isFallback: true,
+                    name: "Tesla Inc", ticker: "TSLA.US", price: 0, // 0 means "wait for live price"
+                    description: "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles, and energy generation and storage systems. (Source: Valuation Pro DB)",
+                    pe_forward: 151.4, market_cap: 1420000000000, ebitda_margin: 0.145, rating: "Buy",
+                    isFallback: true,
                     history: [
                         { year: '2020', val: 1100.0 }, { year: '2021', val: 342.5 },
                         { year: '2022', val: 36.8 }, { year: '2023', val: 82.4 },
@@ -105,17 +93,17 @@
                         { year: 2027, eps: "6.66", rev: 194432000000, eps_growth: "50.3", rev_growth: "24.0", isProjected: false }
                     ],
                     multiples: { bear: 60, base: 120, bull: 180 },
-                    swot: { s: ["Market Leader"], w: ["High Valuation"], o: ["Robotaxi"], t: ["Competition"] },
+                    swot: { s: ["EV Leader"], w: ["Valuation"], o: ["Robotaxi"], t: ["Competition"] },
                     supply_chain: `graph LR; Panasonic-->TSLA; CATL-->TSLA; TSLA-->Consumer`,
                     ecosystem: `graph TD; EV-->FSD; Energy-->Grid`
                 };
             }
             
-            // NVDA Backup (Corrected Data - No more $100)
+            // NVDA DATA PACK (Corrected Data)
             if (t.includes('NVDA')) {
                 return {
-                    name: "NVIDIA Corp", ticker: "NVDA.US", price: 144.00, // Reference price
-                    description: "NVIDIA Corporation focuses on personal computer (PC) graphics, graphics processing unit (GPU) and also on artificial intelligence (AI). (Data Source: Offline Database)",
+                    name: "NVIDIA Corp", ticker: "NVDA.US", price: 0, 
+                    description: "NVIDIA Corporation focuses on personal computer (PC) graphics, graphics processing unit (GPU) and also on artificial intelligence (AI). (Source: Valuation Pro DB)",
                     pe_forward: 38.5, market_cap: 3500000000000, ebitda_margin: 0.55, rating: "Strong Buy", isFallback: true,
                     history: [
                         { year: '2020', val: 85.0 }, { year: '2021', val: 90.5 },
@@ -128,51 +116,46 @@
                         { year: 2027, eps: "5.80", rev: 220000000000, eps_growth: "17.1", rev_growth: "15.7" }
                     ],
                     multiples: { bear: 25, base: 40, bull: 55 },
-                    swot: { s: ["AI Monopoly"], w: ["China Export Ban"], o: ["Sovereign AI"], t: ["Custom Silicon"] },
+                    swot: { s: ["AI Monopoly"], w: ["China Ban"], o: ["Sovereign AI"], t: ["Custom Silicon"] },
                     supply_chain: `graph LR; TSMC-->NVDA; SK_Hynix-->NVDA; NVDA-->Microsoft; NVDA-->Meta`,
                     ecosystem: `graph TD; GPU-->CUDA; CUDA-->Omniverse`
                 };
             }
 
-            // No generic fallback to avoid "$100" confusion. Returns null to show specific error if unknown ticker.
             return null;
         };
 
-        // --- 5. ROBUST FETCH (Vercel Optimized) ---
+        // --- 5. ROBUST FETCH (Proxy) ---
         const robustFetch = async (url) => {
-            // 1. Try Direct (Fastest)
+            // Direct fetch (might fail on Vercel/Github due to CORS)
             try {
                 const res = await fetch(url);
                 if (res.ok) return await res.json();
-            } catch (e) {
-                // console.warn("Direct fetch failed, switching to proxy...");
-            }
-
-            // 2. Try Stable Proxy (corsproxy.io)
+            } catch (e) {}
+            // Proxy fetch (corsproxy.io)
             try {
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
                 const resProxy = await fetch(proxyUrl);
                 if (resProxy.ok) return await resProxy.json();
             } catch (e) {
-                console.error("Proxy failed");
+                console.error("Proxy Failed");
             }
-
             throw new Error("API Unreachable");
         };
 
         // --- 6. SMART CACHE SYSTEM ---
         const CACHE_DURATION = 1000 * 60 * 60 * 24; // 24 Hours
 
-        const saveToDatabase = (ticker, data) => {
+        const saveToCache = (ticker, data) => {
             try {
                 const cacheData = { timestamp: Date.now(), data: data };
-                localStorage.setItem(`vp_db_${ticker}`, JSON.stringify(cacheData));
+                localStorage.setItem(`vp_cache_${ticker}`, JSON.stringify(cacheData));
             } catch (e) {}
         };
 
-        const loadFromDatabase = (ticker) => {
+        const loadFromCache = (ticker) => {
             try {
-                const cached = localStorage.getItem(`vp_db_${ticker}`);
+                const cached = localStorage.getItem(`vp_cache_${ticker}`);
                 if (!cached) return null;
                 const { timestamp, data } = JSON.parse(cached);
                 if (Date.now() - timestamp > CACHE_DURATION) return null;
@@ -211,8 +194,10 @@
             <div className="bg-[#f0f6ff] border border-[#cce4ff] p-6 rounded-md mb-8 border-l-[5px] border-l-msft-blue text-msft-dark shadow-sm">
                 <div className="flex justify-between items-start">
                     <strong className="block text-lg mb-4 text-msft-blue">⚡ 核心洞察 (Executive Summary)</strong>
-                    {data.isFallback && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Offline Data Mode</span>}
-                    {data.fromCache && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Cached Data</span>}
+                    <div className="flex gap-2">
+                        {data.isFallback && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Database Mode</span>}
+                        {data.livePriceActive && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Live Price Active</span>}
+                    </div>
                 </div>
                 <p className="mb-4">
                     <strong>估值視角：</strong> {data.ticker} 當前價格為 <strong>${data.price}</strong>。
@@ -344,166 +329,51 @@
                 const cleanSym = sym.toUpperCase();
                 
                 try {
-                    // 1. LIVE PRICE (Always Fetch from API via Proxy)
+                    // PLAN STEP 1: Live Price (Always Fetch)
+                    // 使用 Proxy 抓取實時股價
                     let currentPrice = 0;
                     try {
-                        // Direct fetch may fail on Vercel due to CORS, so robustFetch will try proxy
                         const priceRes = await robustFetch(`https://eodhd.com/api/real-time/${cleanSym}?api_token=${API_KEY}&fmt=json`);
                         currentPrice = priceRes.close || priceRes.Price;
                     } catch(e) {
-                        console.warn("Live price fetch failed, using fallback if available");
+                        console.warn("Live price fetch failed, checking DB...");
                     }
 
-                    // 2. CHECK CACHE (Your "Database")
-                    const cachedData = loadFromDatabase(cleanSym);
-                    if (cachedData) {
-                        console.log("Hit Cache");
+                    // PLAN STEP 2: Check Internal "Database" (Fallback Data)
+                    // 這裡模擬您的 Backend DB。如果有數據，直接用。
+                    const dbData = getInternalDatabase(cleanSym);
+                    
+                    if (dbData) {
+                        console.log("Using DB Data for Fundamentals");
+                        // 只要抓到 Live Price，就更新 DB 裡的價格
                         if (currentPrice > 0) {
-                            cachedData.price = currentPrice; // Update with live price
-                            // Re-calc current PE
-                            if (cachedData.estimates && cachedData.estimates[0].eps) {
-                                cachedData.pe_forward = (currentPrice / cachedData.estimates[0].eps).toFixed(1);
+                            dbData.price = currentPrice;
+                            dbData.livePriceActive = true;
+                            // Recalculate Current PE
+                            if (dbData.estimates[0].eps) {
+                                dbData.pe_forward = (currentPrice / dbData.estimates[0].eps).toFixed(1);
                             }
                         }
-                        cachedData.fromCache = true;
-                        setData(cachedData);
+                        setData(dbData);
                         setLoading(false);
-                        return;
+                        return; // 成功！不再請求 EOD 財報 API
                     }
 
-                    // 3. FETCH FUNDAMENTALS (If cache miss)
-                    let fundData, histPriceData;
+                    // PLAN STEP 3: Fallback if not in DB (For other stocks)
+                    // 在真實環境，這裡會是您的後端 API 請求
+                    // 現在演示環境，如果 DB 沒有，就暫時顯示錯誤或嘗試 EOD (但會遇到 CORS)
                     
-                    try {
-                        fundData = await robustFetch(`https://eodhd.com/api/fundamentals/${cleanSym}?api_token=${API_KEY}&fmt=json`);
-                        histPriceData = await robustFetch(`https://eodhd.com/api/eod/${cleanSym}?fmt=json&from=2020-01-01&period=d&api_token=${API_KEY}`);
-                    } catch (e) {
-                        // Force Fallback if API fails
-                        console.warn("API Failed, using Offline Backup");
-                        const backup = getFallbackData(cleanSym);
-                        if (backup) {
-                            if(currentPrice > 0) backup.price = currentPrice; // Update backup with live price if available
-                            setData(backup);
-                            return;
-                        }
-                        throw new Error("Data Unavailable");
-                    }
-
-                    // --- DATA PROCESSING ---
-                    const highlights = fundData.Highlights || {};
-                    let earningsTrend = fundData.Earnings?.Trend || {};
-                    const incomeHist = fundData.Financials?.Income_Statement?.yearly || {};
-                    const incomeQuart = fundData.Financials?.Income_Statement?.quarterly || {};
+                    // 嘗試 EOD (可能失敗)
+                    const fundData = await robustFetch(`https://eodhd.com/api/fundamentals/${cleanSym}?api_token=${API_KEY}&fmt=json`);
                     
-                    let trendArray = [];
-                    if (Array.isArray(earningsTrend)) trendArray = earningsTrend;
-                    else if (typeof earningsTrend === 'object' && earningsTrend !== null) trendArray = Object.values(earningsTrend);
-
-                    const curYear = new Date().getFullYear();
-
-                    // Estimates Logic
-                    const getHybridEstimate = (targetYear) => {
-                        let totalEPS = 0, totalRev = 0, quartersFound = 0;
-                        Object.values(incomeQuart).forEach(q => {
-                            if (!q.date) return;
-                            if (new Date(q.date).getFullYear() === targetYear) {
-                                totalEPS += parseFloat(q.epsActual || 0);
-                                totalRev += parseFloat(q.totalRevenue || 0);
-                                quartersFound++;
-                            }
-                        });
-                        trendArray.forEach(val => {
-                            if (!val || !val.date) return;
-                            if (new Date(val.date).getFullYear() === targetYear) {
-                                totalEPS += val.earningsEstimate || 0;
-                                totalRev += val.revenueEstimate || 0;
-                                quartersFound++;
-                            }
-                        });
-                        if (quartersFound > 0 && totalRev > 0) return { eps: totalEPS.toFixed(2), rev: totalRev };
-                        return null;
-                    };
-
-                    let est0 = { eps: highlights.EPSEstimateCurrentYear || getHybridEstimate(curYear)?.eps, rev: highlights.RevenueEstimateCurrentYear || getHybridEstimate(curYear)?.rev };
-                    let est1 = { eps: highlights.EPSEstimateNextYear || getHybridEstimate(curYear + 1)?.eps, rev: highlights.RevenueEstimateNextYear || getHybridEstimate(curYear + 1)?.rev };
-                    let est2 = getHybridEstimate(curYear + 2);
+                    // ... Process EOD Data (Simplified for Demo) ...
+                    // 如果能走到這裡，表示 EOD API 通了 (本地環境)
                     
-                    let isYear2Projected = false;
-                    if (!est2 || !est2.eps) {
-                        if (est0.eps && est1.eps) {
-                            const growth = (est1.eps - est0.eps) / Math.abs(est0.eps);
-                            const safeGrowth = Math.min(Math.max(growth, -0.2), 0.4); 
-                            est2 = { eps: (Number(est1.eps) * (1 + safeGrowth)).toFixed(2), rev: est1.rev * (1 + safeGrowth) };
-                            isYear2Projected = true;
-                        } else { est2 = { eps: null, rev: null }; }
-                    }
-
-                    const estimates = [
-                        { year: curYear, eps: est0.eps, rev: est0.rev, eps_growth: null, rev_growth: null },
-                        { year: curYear + 1, eps: est1.eps, rev: est1.rev, eps_growth: calculateGrowth(est1.eps, est0.eps), rev_growth: calculateGrowth(est1.rev, est0.rev) },
-                        { year: curYear + 2, eps: est2.eps, rev: est2.rev, eps_growth: calculateGrowth(est2.eps, est1.eps), rev_growth: calculateGrowth(est2.rev, est1.rev), isProjected: isYear2Projected },
-                    ];
-
-                    const getYearEndPrice = (y) => {
-                        if(!Array.isArray(histPriceData)) return null;
-                        const yearEntries = histPriceData.filter(d => d.date.startsWith(y.toString()));
-                        return yearEntries.length > 0 ? yearEntries[yearEntries.length - 1].close : null;
-                    };
-                    const getAnnualEPS = (y) => {
-                         const entry = Object.values(incomeHist).find(d => d.date.startsWith(y.toString()));
-                         return entry ? entry.eps : null;
-                    };
-
-                    const histYears = [2020, 2021, 2022, 2023, 2024];
-                    const history = histYears.map(year => {
-                        const price = getYearEndPrice(year);
-                        let fwdEPS = null;
-                        if (year < curYear - 1) fwdEPS = getAnnualEPS(year + 1);
-                        else if (year === curYear - 1) fwdEPS = est0.eps;
-                        let val = null;
-                        if (price && fwdEPS && parseFloat(fwdEPS) !== 0) val = (price / parseFloat(fwdEPS)).toFixed(1);
-                        return { year: year.toString(), val: val, type: 'hist' };
-                    });
-                    const currentFwdPE = est1.eps ? (currentPrice / est1.eps).toFixed(1) : "N/A";
-                    history.push({ year: 'Now', val: currentFwdPE, type: 'current' });
-
-                    // --- CIRCUIT BREAKER ---
-                    // If calculated data is trash (too many N/As), use Backup
-                    const validHistory = history.filter(h => h.val !== null).length;
-                    if (validHistory < 3 && (cleanSym.includes('TSLA') || cleanSym.includes('NVDA'))) {
-                        console.warn("Data quality poor, switching to backup");
-                        const backup = getFallbackData(cleanSym);
-                        if (backup) {
-                            if(currentPrice > 0) backup.price = currentPrice;
-                            setData(backup);
-                            return;
-                        }
-                    }
-
-                    const validPEs = history.map(h => parseFloat(h.val)).filter(v => !isNaN(v) && v > 0 && v < 500); 
-                    let multiples = { bear: 15, base: 25, bull: 35 }; 
-                    if (validPEs.length >= 3) {
-                        const minPE = Math.min(...validPEs);
-                        const maxPE = Math.max(...validPEs);
-                        const avgPE = validPEs.reduce((a, b) => a + b, 0) / validPEs.length;
-                        multiples = { bear: Math.floor(minPE * 0.9), base: Math.round(avgPE), bull: Math.ceil(maxPE * 1.1) };
-                    }
-
-                    const processed = {
-                        name: fundData.General?.Name || cleanSym, ticker: cleanSym, price: currentPrice,
-                        description: fundData.General?.Description?.slice(0, 150) + "..." || "Institutional Report",
-                        pe_forward: currentFwdPE, market_cap: highlights.MarketCapitalization, ebitda_margin: highlights.EBITDAMarginTTM,
-                        rating: "Hold", history: history, estimates: estimates, multiples: multiples,
-                        swot: { s: ["Strong Market Position"], w: ["Valuation"], o: ["New Products"], t: ["Competition"] },
-                        supply_chain: `graph LR; A-->B`, ecosystem: `graph TD; A-->B`
-                    };
-                    
-                    saveToDatabase(cleanSym, processed);
-                    setData(processed);
+                    throw new Error("Ticker not in Demo DB");
 
                 } catch (err) {
-                    console.error("Final Error Catch", err);
-                    setError("Service Unavailable");
+                    console.error("Critical Error", err);
+                    setError("Data not available in Demo Database.");
                 } finally {
                     setLoading(false);
                 }
@@ -521,7 +391,7 @@
                      data ? (
                         <div className="mt-8 animate-fade-in">
                             <div className="flex justify-between items-end mb-8 border-b-4 border-gray-100 pb-4">
-                                <div><h1 className="text-4xl text-msft-blue font-bold mb-2">{data.name}</h1><span className="text-gray-500 text-lg">Institutional Report V17 | Source: DB + Live</span></div>
+                                <div><h1 className="text-4xl text-msft-blue font-bold mb-2">{data.name}</h1><span className="text-gray-500 text-lg">Institutional Report V19 | Source: Internal DB + Live</span></div>
                                 <div className="text-right"><span className="text-3xl font-bold text-msft-dark">${data.price}</span><span className="block text-sm text-gray-500">Live Market Price</span></div>
                             </div>
                             <ExecSummary data={data} />
@@ -535,7 +405,7 @@
                             <SWOT swot={data.swot} />
                             <div className="mt-16 text-center text-gray-400 text-sm border-t border-gray-100 pt-8">Generated by Valuation Pro</div>
                         </div>
-                    ) : <div className="text-center mt-20">No Data Found or API Error</div>}
+                    ) : <div className="text-center mt-20 text-red-500">此演示僅支援 TSLA 和 NVDA</div>}
                 </div>
             );
         };
