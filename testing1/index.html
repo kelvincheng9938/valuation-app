@@ -13,7 +13,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- 2. Config -->
+    <!-- 2. Config & Styles -->
     <script>
         tailwind.config = {
             theme: {
@@ -71,7 +71,6 @@
 
         // --- 4. INTERNAL DATABASE (The "Safety Net") ---
         // 這是您的「靜態數據庫」。當 API 失敗時，這裡的數據會立刻補上，確保用戶永遠看不到空白或 N/A。
-        // 這包含了您提到的 "Forward PE 過去 Data" 和 "2027 Estimates"。
         const getInternalDatabase = (ticker) => {
             const t = ticker.toUpperCase();
             
