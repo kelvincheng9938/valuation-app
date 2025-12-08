@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Valuation Pro - Institutional Report (Debug)</title>
+    <title>Valuation Pro - Institutional Report</title>
+    <!-- Base tag ensures assets load correctly even in subfolders like /testing1/ -->
+    <base href="/"> 
 
     <!-- Libraries -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -54,9 +56,21 @@
         // --- CONSTANTS ---
         const API_KEY = "692ff0e71412a4.89947654"; 
         
-        // --- INTERNAL DATABASE (The "Golden Source") ---
-        // 這是您的核心資產。即便 EOD API 爆炸，這些數據依然會顯示。
-        // 這模擬了您 "Save to Database" 的結果。
+        // --- HELPER FUNCTIONS ---
+        const formatNumber = (num) => {
+            if (num === null || num === undefined || isNaN(num)) return "N/A";
+            const absNum = Math.abs(num);
+            if (absNum > 1e9) return (num / 1e9).toFixed(1) + "B";
+            if (absNum > 1e6) return (num / 1e6).toFixed(1) + "M";
+            return num.toLocaleString();
+        };
+
+        const calculateGrowth = (current, previous) => {
+            if (!current || !previous || previous == 0) return null;
+            return ((current - previous) / Math.abs(previous) * 100).toFixed(1);
+        };
+
+        // --- INTERNAL DATABASE (The "Safety Net") ---
         const INTERNAL_DB = {
             "TSLA": {
                 name: "Tesla Inc", ticker: "TSLA.US", price: 446.74, 
@@ -100,27 +114,40 @@
             }
         };
 
-        const formatNumber = (num) => {
-            if (num === null || num === undefined || isNaN(num)) return "N/A";
-            const absNum = Math.abs(num);
-            if (absNum > 1e9) return (num / 1e9).toFixed(1) + "B";
-            if (absNum > 1e6) return (num / 1e6).toFixed(1) + "M";
-            return num.toLocaleString();
-        };
-
+        // --- 5. ROBUST FETCH (Proxy) ---
         const robustFetch = async (url) => {
+            // Direct fetch
             try {
-                // Try Direct First
                 const res = await fetch(url);
                 if (res.ok) return await res.json();
-            } catch (e) { }
-            // Try Proxy
+            } catch (e) {}
+            // Proxy fetch
             try {
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
                 const resProxy = await fetch(proxyUrl);
                 if (resProxy.ok) return await resProxy.json();
-            } catch (e) { throw new Error("API Unreachable"); }
-            throw new Error("Fetch Error");
+            } catch (e) { console.error("Proxy Failed"); }
+            throw new Error("API Unreachable");
+        };
+
+        // --- 6. SMART CACHE SYSTEM ---
+        const CACHE_DURATION = 1000 * 60 * 60 * 24; 
+
+        const saveToCache = (ticker, data) => {
+            try {
+                const cacheData = { timestamp: Date.now(), data: data };
+                localStorage.setItem(`vp_cache_${ticker}`, JSON.stringify(cacheData));
+            } catch (e) {}
+        };
+
+        const loadFromCache = (ticker) => {
+            try {
+                const cached = localStorage.getItem(`vp_cache_${ticker}`);
+                if (!cached) return null;
+                const { timestamp, data } = JSON.parse(cached);
+                if (Date.now() - timestamp > CACHE_DURATION) return null;
+                return data;
+            } catch (e) { return null; }
         };
 
         // --- COMPONENTS ---
@@ -129,7 +156,6 @@
             const handleSubmit = (e) => {
                 e.preventDefault();
                 let ticker = input.toUpperCase().trim();
-                // Basic cleanup
                 if (ticker && !ticker.includes(".") && !ticker.match(/^\d+$/)) ticker += ".US";
                 if (ticker.match(/^\d+$/)) ticker += ".HK";
                 if(ticker) onSearch(ticker);
@@ -160,8 +186,19 @@
 
         const ExecSummary = ({ data }) => (
             <div className="bg-[#f0f6ff] border border-[#cce4ff] p-6 rounded-md mb-8 border-l-[5px] border-l-msft-blue text-msft-dark shadow-sm">
-                <strong className="block text-lg mb-4 text-msft-blue">⚡ 核心洞察 (Executive Summary)</strong>
-                <p><strong>估值視角：</strong> {data.ticker} 當前價格 <strong>${data.price}</strong>。Forward P/E 約 <strong>{data.pe_forward}x</strong>。</p>
+                <div className="flex justify-between items-start">
+                    <strong className="block text-lg mb-4 text-msft-blue">⚡ 核心洞察 (Executive Summary)</strong>
+                    <div className="flex gap-2">
+                        {data.isFallback && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Database Mode</span>}
+                        {data.source.includes("Live") && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Live Price Active</span>}
+                    </div>
+                </div>
+                <p className="mb-4">
+                    <strong>估值視角：</strong> {data.ticker} 當前價格 <strong>${data.price}</strong>。
+                    市場預估其 FY{data.estimates[0].year} EPS 為 {data.estimates[0].eps ? '$'+data.estimates[0].eps : 'N/A'}。
+                    目前的 Forward P/E 約為 <strong>{data.pe_forward}x</strong>。
+                </p>
+                <p><strong>動態估值區間：</strong> 熊市 {data.multiples.bear}x / 基準 {data.multiples.base}x / 牛市 {data.multiples.bull}x。</p>
             </div>
         );
 
@@ -174,18 +211,102 @@
             </div>
         );
 
-        const MermaidDiagram = ({ chart, title }) => {
-            useEffect(() => {
-                if(window.mermaid) mermaid.contentLoaded();
-            }, [chart]);
+        const PEHistoryChart = ({ history }) => {
+            const maxVal = Math.max(...history.map(h => parseFloat(h.val) || 0));
             return (
-                <div className="mb-10">
-                    <h2 className="text-2xl text-gray-800 border-l-[6px] border-msft-blue pl-4 mb-6 font-bold">{title}</h2>
-                    <div className="diagram-box">
-                        <div className="mermaid">{chart}</div>
+                <div className="bg-white p-6 rounded border border-gray-200 shadow-card mb-8">
+                    <span className="block text-lg font-bold text-gray-600 border-b border-gray-100 pb-2 mb-4">📉 Historical Forward P/E Trend</span>
+                    <div className="flex items-end justify-between h-56 px-10 bg-gray-50 rounded">
+                        {history.map((h, i) => (
+                            <div key={i} className="flex flex-col items-center w-1/12">
+                                <span className="mb-2 text-xs font-bold text-gray-600">{h.val}x</span>
+                                <div className={`w-full rounded-t ${h.type === 'current' ? 'bg-msft-blue' : 'bg-gray-400'}`} style={{height: `${Math.min((h.val/200)*100, 100)}%`}}></div>
+                                <span className="mt-2 text-xs font-bold text-gray-500">{h.year}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             );
+        };
+
+        const GaugeBar = ({ label, estimates, currentPrice, dynamicMultiples }) => {
+            if (!estimates.eps || estimates.eps <= 0) return null;
+            const { bear, base, bull } = dynamicMultiples;
+            const bearPrice = estimates.eps * bear;
+            const basePrice = estimates.eps * base;
+            const bullPrice = estimates.eps * bull;
+            const min = bearPrice * 0.7; const max = bullPrice * 1.2; const range = max - min;
+            let pct = ((currentPrice - min) / range) * 100; pct = Math.max(5, Math.min(95, pct)); 
+            return (
+                <div className="mb-8">
+                    <div className="flex justify-between mb-1 text-sm font-bold text-gray-600"><span>{label}</span><span style={{color: '#3498db'}}>Fair Value</span></div>
+                    <div className="gauge-container">
+                        <div className="gauge-segment bg-val-blue w-1/3">Bear ({bear}x)</div><div className="gauge-segment bg-val-green w-1/3">Base ({base}x)</div><div className="gauge-segment bg-val-orange w-1/3">Bull ({bull}x)</div>
+                        <div className="price-marker" style={{ left: `${pct}%` }}><div className="price-flag">Now</div></div>
+                    </div>
+                    <div className="flex justify-between mt-2 text-xs text-gray-400"><span>${bearPrice.toFixed(0)}</span><span className="font-bold text-gray-600">${basePrice.toFixed(0)}</span><span>${bullPrice.toFixed(0)}</span></div>
+                </div>
+            );
+        };
+
+        const ValuationSection = ({ data }) => {
+            return (
+                <div className="grid md:grid-cols-2 gap-8 mb-10">
+                    <div className="bg-white p-6 rounded border border-gray-200 shadow-card">
+                        <span className="block text-lg font-bold text-gray-600 border-b border-gray-100 pb-2 mb-6">⚖️ Multi-Year Valuation</span>
+                        {data.estimates.map((est, i) => (<GaugeBar key={i} label={`FY${est.year} Est. (EPS ${est.eps ? '$' + est.eps : 'N/A'})`} estimates={est} currentPrice={data.price} dynamicMultiples={data.multiples} />))}
+                    </div>
+                    <div className="bg-white p-6 rounded border border-gray-200 shadow-card">
+                        <span className="block text-lg font-bold text-gray-600 border-b border-gray-100 pb-2 mb-6">🚀 Growth Forecast</span>
+                        {data.estimates.map((est, i) => (
+                            <div key={i} className="flex items-center mb-4">
+                                <span className="w-12 text-sm font-bold text-gray-500">{est.year}E</span>
+                                <div className="flex-1 h-3 bg-gray-100 rounded-full mx-4 overflow-hidden"><div className="h-full bg-val-barRed" style={{width: `${(i+1)*30}%`}}></div></div>
+                                <span className="w-20 text-right font-bold text-gray-800">${est.eps}</span>
+                                <span className="ml-2 text-xs font-bold text-val-green">{est.eps_growth ? '+'+est.eps_growth+'%' : ''}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const MermaidDiagram = ({ chart, title }) => {
+            useEffect(() => { if(window.mermaid) mermaid.contentLoaded(); }, [chart]);
+            return (
+                <div className="mb-10">
+                    <h2 className="text-2xl text-gray-800 border-l-[6px] border-msft-blue pl-4 mb-6 font-bold">{title}</h2>
+                    <div className="diagram-box"><div className="mermaid">{chart}</div></div>
+                </div>
+            );
+        };
+
+        const AnalysisTables = ({ data }) => (
+            <>
+                <h2 className="text-2xl text-gray-800 border-l-[6px] border-msft-blue pl-4 mb-6 font-bold">5. 競爭與財務 (Fundamentals)</h2>
+                <div className="bg-white p-6 rounded border border-gray-200 shadow-card mb-10"><h3 className="text-lg font-bold text-gray-700 mb-4">Competitor Matrix</h3><table className="report-table w-full text-center"><thead><tr><th>Peer</th><th className="text-center">Market Cap</th><th className="text-center">EBITDA Margin</th></tr></thead><tbody><tr className="bg-blue-50"><td className="font-bold text-msft-blue">{data.ticker}</td><td>{formatNumber(data.market_cap)}</td><td>{data.ebitda_margin ? (data.ebitda_margin * 100).toFixed(1) + '%' : 'N/A'}</td></tr></tbody></table></div>
+            </>
+        );
+
+        const SWOT = ({ swot }) => (
+            <div className="mb-12"><h2 className="text-2xl text-gray-800 border-l-[6px] border-msft-blue pl-4 mb-6 font-bold">6. 戰略分析 (SWOT)</h2><div className="grid md:grid-cols-2 gap-6"><div className="bg-white p-6 rounded shadow-card border-t-[4px] border-val-green"><h3 className="font-bold text-lg mb-4">💪 Strengths</h3><ul className="list-disc pl-5 space-y-2 text-gray-600">{swot.s.map((item, i) => <li key={i}>{item}</li>)}</ul></div><div className="bg-white p-6 rounded shadow-card border-t-[4px] border-val-orange"><h3 className="font-bold text-lg mb-4">⚠️ Weaknesses</h3><ul className="list-disc pl-5 space-y-2 text-gray-600">{swot.w.map((item, i) => <li key={i}>{item}</li>)}</ul></div><div className="bg-white p-6 rounded shadow-card border-t-[4px] border-msft-blue"><h3 className="font-bold text-lg mb-4">🚀 Opportunities</h3><ul className="list-disc pl-5 space-y-2 text-gray-600">{swot.o.map((item, i) => <li key={i}>{item}</li>)}</ul></div><div className="bg-white p-6 rounded shadow-card border-t-[4px] border-val-red"><h3 className="font-bold text-lg mb-4">🛡️ Threats</h3><ul className="list-disc pl-5 space-y-2 text-gray-600">{swot.t.map((item, i) => <li key={i}>{item}</li>)}</ul></div></div></div>
+        );
+
+        const TradingViewWidget = ({ ticker }) => {
+            const containerRef = useRef();
+            useEffect(() => {
+                if (!containerRef.current) return;
+                containerRef.current.innerHTML = "";
+                const script = document.createElement("script");
+                script.src = "https://s3.tradingview.com/tv.js";
+                script.async = true;
+                script.onload = () => {
+                    let tvTicker = ticker.includes("HK") ? `HKEX:${ticker.replace('.HK','')}` : `NASDAQ:${ticker.replace('.US','')}`;
+                    new TradingView.widget({"width": "100%", "height": 500, "symbol": tvTicker, "interval": "D", "timezone": "Etc/UTC", "theme": "light", "style": "1", "locale": "en", "toolbar_bg": "#f1f3f6", "enable_publishing": false, "allow_symbol_change": true, "container_id": containerRef.current.id});
+                };
+                containerRef.current.appendChild(script);
+            }, [ticker]);
+            return (<div className="mb-10"><h2 className="text-2xl text-gray-800 border-l-[6px] border-msft-blue pl-4 mb-6 font-bold">1. 股價走勢圖 (Price Action)</h2><div id={`tv-${ticker}`} ref={containerRef} className="h-[500px] border border-gray-200 rounded-lg overflow-hidden shadow-card bg-white"></div></div>);
         };
 
         const App = () => {
@@ -199,7 +320,7 @@
 
             const fetchData = async (sym) => {
                 setLoading(true); 
-                const cleanSym = sym.toUpperCase().replace(".US", ""); // Internal DB uses keys like "TSLA"
+                const cleanSym = sym.toUpperCase().replace(".US", ""); 
                 const fullSym = sym.toUpperCase().includes(".") ? sym.toUpperCase() : sym.toUpperCase() + ".US";
                 
                 setStatus("Checking Database...");
@@ -208,12 +329,11 @@
                 let displayData = null;
 
                 // 1. DATABASE LOOKUP (Priority 1)
-                // If we have it in our "Internal DB", render it IMMEDIATELY.
                 if (INTERNAL_DB[cleanSym]) {
                     addLog(`Found ${cleanSym} in Internal DB!`);
-                    displayData = { ...INTERNAL_DB[cleanSym] }; // Clone it
+                    displayData = { ...INTERNAL_DB[cleanSym] }; 
                     setData(displayData);
-                    setLoading(false); // Render first, update price later
+                    setLoading(false); 
                     
                     // 2. LIVE PRICE UPDATE (Background)
                     setStatus("Fetching Live Price...");
@@ -224,11 +344,10 @@
                             addLog(`Live Price Updated: $${livePrice}`);
                             displayData.price = livePrice;
                             displayData.source = "Database + Live API";
-                             // Re-calc current PE
                             if (displayData.estimates[0].eps) {
                                 displayData.pe_forward = (livePrice / displayData.estimates[0].eps).toFixed(1);
                             }
-                            setData({ ...displayData }); // Force Re-render
+                            setData({ ...displayData }); 
                         }
                     } catch (e) {
                         addLog("Live Price Failed (Using DB Price)");
@@ -243,15 +362,12 @@
                     const priceRes = await robustFetch(`https://eodhd.com/api/real-time/${fullSym}?api_token=${API_KEY}&fmt=json`);
                     const fundRes = await robustFetch(`https://eodhd.com/api/fundamentals/${fullSym}?api_token=${API_KEY}&fmt=json`);
                     
-                    // If we get here, construct a basic object (Simplified for this demo)
-                    // This part runs for stocks like AAPL (if you search it)
                     const processed = {
                         name: fundRes.General?.Name || fullSym,
                         ticker: fullSym,
                         price: priceRes.close || priceRes.Price,
                         description: fundRes.General?.Description,
                         source: "Live API",
-                        // ... (Simplified structure for non-DB stocks to prevent crash) ...
                         history: [], estimates: [], multiples: {bear:10, base:15, bull:20}, swot:{s:[],w:[],o:[],t:[]}, supply_chain:"", ecosystem:"" 
                     };
                     setData(processed);
@@ -281,55 +397,12 @@
                             
                             <ExecSummary data={data} />
                             <KPIGrid data={data} />
-
-                            {/* Charts Section */}
-                            {data.history && data.history.length > 0 && (
-                                <div className="bg-white p-6 rounded border border-gray-200 shadow-card mb-8">
-                                    <span className="block text-lg font-bold text-gray-600 border-b border-gray-100 pb-2 mb-4">📉 Historical Forward P/E Trend</span>
-                                    <div className="flex items-end justify-between h-56 px-10 bg-gray-50 rounded">
-                                        {data.history.map((h, i) => (
-                                            <div key={i} className="flex flex-col items-center w-1/12">
-                                                <span className="mb-2 text-xs font-bold text-gray-600">{h.val}x</span>
-                                                <div className={`w-full rounded-t ${h.type === 'current' ? 'bg-msft-blue' : 'bg-gray-400'}`} style={{height: `${Math.min((h.val/200)*100, 100)}%`}}></div>
-                                                <span className="mt-2 text-xs font-bold text-gray-500">{h.year}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {/* Valuation Section */}
-                            {data.estimates && data.estimates.length > 0 && (
-                                <div className="grid md:grid-cols-2 gap-8 mb-10">
-                                    <div className="bg-white p-6 rounded border border-gray-200 shadow-card">
-                                        <span className="block text-lg font-bold text-gray-600 border-b border-gray-100 pb-2 mb-6">⚖️ Multi-Year Valuation</span>
-                                        {data.estimates.map((est, i) => (
-                                            <div key={i} className="mb-6">
-                                                <div className="flex justify-between mb-1 text-sm font-bold text-gray-600"><span>FY{est.year} (EPS ${est.eps})</span><span className="text-msft-blue">Fair Value</span></div>
-                                                <div className="relative h-8 bg-gray-200 rounded-full overflow-hidden flex">
-                                                    <div className="bg-val-blue w-1/3 flex items-center justify-center text-white text-xs">Bear {data.multiples.bear}x</div>
-                                                    <div className="bg-val-green w-1/3 flex items-center justify-center text-white text-xs">Base {data.multiples.base}x</div>
-                                                    <div className="bg-val-orange w-1/3 flex items-center justify-center text-white text-xs">Bull {data.multiples.bull}x</div>
-                                                    <div className="absolute top-0 bottom-0 w-1 bg-red-600 border-2 border-white shadow-lg" style={{left: '50%'}}></div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="bg-white p-6 rounded border border-gray-200 shadow-card">
-                                        <span className="block text-lg font-bold text-gray-600 border-b border-gray-100 pb-2 mb-6">🚀 Growth Forecast</span>
-                                        {data.estimates.map((est, i) => (
-                                            <div key={i} className="flex items-center mb-4">
-                                                <span className="w-12 text-sm font-bold text-gray-500">{est.year}E</span>
-                                                <div className="flex-1 h-3 bg-gray-100 rounded-full mx-4 overflow-hidden"><div className="h-full bg-val-barRed" style={{width: `${(i+1)*30}%`}}></div></div>
-                                                <span className="w-20 text-right font-bold text-gray-800">${est.eps}</span>
-                                                <span className="ml-2 text-xs font-bold text-val-green">{est.eps_growth ? '+'+est.eps_growth+'%' : ''}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
+                            <TradingViewWidget ticker={data.ticker} />
+                            <PEHistoryChart history={data.history} />
+                            <ValuationSection data={data} />
                             <MermaidDiagram chart={data.supply_chain} title="3. 產業鏈上下游分析 (Supply Chain)" />
+                            <AnalysisTables data={data} />
+                            <SWOT swot={data.swot} />
                             <div className="mt-16 text-center text-gray-400 text-sm border-t border-gray-100 pt-8">Generated by Valuation Pro</div>
                         </div>
                     ) : <div className="text-center mt-20 text-red-500 font-bold">No Data Found. Try searching 'TSLA' or 'NVDA'.</div>}
