@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valuation Pro - Institutional Report</title>
-    <!-- V23 Fix: Changed base path to relative to support GitHub Pages subfolder -->
+    <!-- Base path set to current directory for Next.js public folder compatibility -->
     <base href="./"> 
 
     <!-- Libraries -->
@@ -45,6 +45,10 @@
         .report-table th { background-color: #0078D4; color: white; padding: 12px; text-align: left; }
         .report-table td { padding: 12px; border-bottom: 1px solid #eee; }
         .report-table tr:nth-child(even) { background-color: #fcfcfc; }
+        /* Admin Tool Styles */
+        .admin-panel { background: #1e1e1e; color: #00ff00; padding: 20px; margin-top: 50px; border-radius: 8px; font-family: monospace; display: none; }
+        .admin-panel.open { display: block; }
+        .code-block { background: #000; padding: 15px; color: #fff; overflow-x: auto; white-space: pre; border-radius: 4px; margin-top: 10px; max-height: 300px; overflow-y: auto; }
     </style>
 </head>
 <body>
@@ -56,25 +60,13 @@
         // --- CONSTANTS ---
         const API_KEY = "692ff0e71412a4.89947654"; 
         
-        // --- HELPER FUNCTIONS ---
-        const formatNumber = (num) => {
-            if (num === null || num === undefined || isNaN(num)) return "N/A";
-            const absNum = Math.abs(num);
-            if (absNum > 1e9) return (num / 1e9).toFixed(1) + "B";
-            if (absNum > 1e6) return (num / 1e6).toFixed(1) + "M";
-            return num.toLocaleString();
-        };
-
-        const calculateGrowth = (current, previous) => {
-            if (!current || !previous || previous == 0) return null;
-            return ((current - previous) / Math.abs(previous) * 100).toFixed(1);
-        };
-
-        // --- INTERNAL DATABASE (The "Safety Net") ---
+        // --- 1. INTERNAL DATABASE (YOUR PERMANENT STORAGE) ---
+        // Instructions: Use the Admin Tool at the bottom of the page to generate new data.
+        // Copy the JSON output and paste it here inside this object.
         const INTERNAL_DB = {
             "TSLA": {
-                name: "Tesla Inc", ticker: "TSLA.US", price: 446.74, 
-                description: "Tesla, Inc. is the global leader in electric vehicles and clean energy. (Source: Internal DB)",
+                name: "Tesla Inc", ticker: "TSLA.US", 
+                description: "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles, and energy generation and storage systems. (Source: Internal DB)",
                 pe_forward: 151.4, market_cap: 1420000000000, ebitda_margin: 0.145, rating: "Buy",
                 source: "Database",
                 history: [
@@ -93,7 +85,7 @@
                 ecosystem: `graph TD; EV-->FSD; Energy-->Grid`
             },
             "NVDA": {
-                name: "NVIDIA Corp", ticker: "NVDA.US", price: 144.00,
+                name: "NVIDIA Corp", ticker: "NVDA.US",
                 description: "NVIDIA dominates the AI computing era with its GPUs and CUDA platform. (Source: Internal DB)",
                 pe_forward: 38.5, market_cap: 3500000000000, ebitda_margin: 0.55, rating: "Strong Buy",
                 source: "Database",
@@ -114,14 +106,25 @@
             }
         };
 
-        // --- 5. ROBUST FETCH (Proxy) ---
+        // --- HELPER FUNCTIONS ---
+        const formatNumber = (num) => {
+            if (num === null || num === undefined || isNaN(num)) return "N/A";
+            const absNum = Math.abs(num);
+            if (absNum > 1e9) return (num / 1e9).toFixed(1) + "B";
+            if (absNum > 1e6) return (num / 1e6).toFixed(1) + "M";
+            return num.toLocaleString();
+        };
+
+        const calculateGrowth = (current, previous) => {
+            if (!current || !previous || previous == 0) return null;
+            return ((current - previous) / Math.abs(previous) * 100).toFixed(1);
+        };
+
         const robustFetch = async (url) => {
-            // Direct fetch
             try {
                 const res = await fetch(url);
                 if (res.ok) return await res.json();
             } catch (e) {}
-            // Proxy fetch
             try {
                 const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
                 const resProxy = await fetch(proxyUrl);
@@ -130,24 +133,98 @@
             throw new Error("API Unreachable");
         };
 
-        // --- 6. SMART CACHE SYSTEM ---
-        const CACHE_DURATION = 1000 * 60 * 60 * 24; 
+        // --- ADMIN TOOL: DATA GENERATOR ---
+        const AdminTool = () => {
+            const [ticker, setTicker] = useState("");
+            const [output, setOutput] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [isOpen, setIsOpen] = useState(false);
 
-        const saveToCache = (ticker, data) => {
-            try {
-                const cacheData = { timestamp: Date.now(), data: data };
-                localStorage.setItem(`vp_cache_${ticker}`, JSON.stringify(cacheData));
-            } catch (e) {}
-        };
+            const generateData = async () => {
+                if(!ticker) return;
+                setLoading(true);
+                setOutput("Fetching EOD Data... Please wait.");
+                
+                try {
+                    const cleanSym = ticker.toUpperCase();
+                    // 1. Fundamentals
+                    const fund = await robustFetch(`https://eodhd.com/api/fundamentals/${cleanSym}.US?api_token=${API_KEY}&fmt=json`);
+                    // 2. History
+                    const hist = await robustFetch(`https://eodhd.com/api/eod/${cleanSym}.US?fmt=json&from=2020-01-01&period=d&api_token=${API_KEY}`);
+                    
+                    // --- PROCESS LOGIC ---
+                    const highlights = fund.Highlights || {};
+                    const incomeHist = fund.Financials?.Income_Statement?.yearly || {};
+                    
+                    // Estimates (Simplified generation for DB)
+                    const est0 = { eps: highlights.EPSEstimateCurrentYear, rev: highlights.RevenueEstimateCurrentYear };
+                    const est1 = { eps: highlights.EPSEstimateNextYear, rev: highlights.RevenueEstimateNextYear };
+                    // Proj 2027
+                    const g = (est1.eps - est0.eps)/est0.eps || 0.1;
+                    const est2 = { eps: est1.eps * (1+g), rev: est1.rev * 1.1 };
+                    
+                    const estimates = [
+                        { year: 2025, eps: est0.eps?.toFixed(2), rev: est0.rev, eps_growth: null, rev_growth: null },
+                        { year: 2026, eps: est1.eps?.toFixed(2), rev: est1.rev, eps_growth: ((est1.eps-est0.eps)/est0.eps*100).toFixed(1), rev_growth: "10.0" },
+                        { year: 2027, eps: est2.eps?.toFixed(2), rev: est2.rev, eps_growth: (g*100).toFixed(1), rev_growth: "10.0", isProjected: true }
+                    ];
 
-        const loadFromCache = (ticker) => {
-            try {
-                const cached = localStorage.getItem(`vp_cache_${ticker}`);
-                if (!cached) return null;
-                const { timestamp, data } = JSON.parse(cached);
-                if (Date.now() - timestamp > CACHE_DURATION) return null;
-                return data;
-            } catch (e) { return null; }
+                    // History PE
+                    const history = [];
+                    [2020, 2021, 2022, 2023, 2024].forEach(y => {
+                        // Find price
+                        const entries = hist.filter(d => d.date.startsWith(y.toString()));
+                        const price = entries.length > 0 ? entries[entries.length-1].close : 0;
+                        // Find EPS
+                        const epsEntry = Object.values(incomeHist).find(d => d.date.startsWith(y.toString()));
+                        const eps = epsEntry ? epsEntry.eps : 1;
+                        if(price > 0) history.push({ year: y.toString(), val: (price/eps).toFixed(1) });
+                    });
+                    history.push({ year: 'Now', val: (hist[hist.length-1].close / est0.eps).toFixed(1), type: 'current' });
+
+                    const dbObject = {
+                        name: fund.General?.Name,
+                        ticker: `${cleanSym}.US`,
+                        description: fund.General?.Description?.substring(0, 150) + "...",
+                        pe_forward: (hist[hist.length-1].close / est0.eps).toFixed(1),
+                        market_cap: highlights.MarketCapitalization,
+                        ebitda_margin: highlights.EBITDAMarginTTM,
+                        rating: "Hold",
+                        source: "Database",
+                        history: history,
+                        estimates: estimates,
+                        multiples: { bear: 15, base: 25, bull: 35 }, // Default
+                        swot: { s: ["Generated Strength"], w: [], o: [], t: [] },
+                        supply_chain: "graph LR; A-->B", ecosystem: "graph TD; A-->B"
+                    };
+
+                    const jsonString = `"${cleanSym}": ${JSON.stringify(dbObject, null, 4)},`;
+                    setOutput(jsonString);
+
+                } catch(e) {
+                    setOutput("Error generating data: " + e.message + "\nCheck CORS/API Key.");
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed bottom-5 right-5 z-50">
+                    <button onClick={() => setIsOpen(!isOpen)} className="bg-gray-800 text-white px-4 py-2 rounded shadow-lg border border-gray-600">
+                        {isOpen ? "Close Admin" : "Admin: Build DB"}
+                    </button>
+                    <div className={`admin-panel ${isOpen ? 'open' : ''} w-96 shadow-2xl`}>
+                        <h3 className="font-bold mb-2">Database Generator</h3>
+                        <p className="text-xs text-gray-400 mb-4">Enter ticker to fetch EOD data and generate JSON for Internal DB.</p>
+                        <div className="flex gap-2 mb-2">
+                            <input value={ticker} onChange={e=>setTicker(e.target.value)} placeholder="e.g. MSFT" className="bg-gray-700 p-1 w-full text-white" />
+                            <button onClick={generateData} className="bg-green-700 px-3 py-1 text-white rounded">{loading ? "..." : "Get"}</button>
+                        </div>
+                        <textarea className="w-full h-48 bg-black text-green-400 text-xs p-2 rounded" readOnly value={output} placeholder="JSON will appear here..."></textarea>
+                        <p className="text-xs text-gray-500 mt-2">Copy this JSON and paste it into INTERNAL_DB in index.html</p>
+                    </div>
+                </div>
+            );
         };
 
         // --- COMPONENTS ---
@@ -177,20 +254,13 @@
             );
         };
 
-        const DebugPanel = ({ logs, status }) => (
-            <div className="fixed bottom-0 left-0 right-0 bg-black text-white text-xs p-2 font-mono opacity-80 z-50 max-h-32 overflow-y-auto">
-                <div className="font-bold text-yellow-400 mb-1">🔧 Debug Status: {status}</div>
-                {logs.map((log, i) => <div key={i}>&gt; {log}</div>)}
-            </div>
-        );
-
         const ExecSummary = ({ data }) => (
             <div className="bg-[#f0f6ff] border border-[#cce4ff] p-6 rounded-md mb-8 border-l-[5px] border-l-msft-blue text-msft-dark shadow-sm">
                 <div className="flex justify-between items-start">
                     <strong className="block text-lg mb-4 text-msft-blue">⚡ 核心洞察 (Executive Summary)</strong>
                     <div className="flex gap-2">
-                        {data.isFallback && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Database Mode</span>}
-                        {data.source.includes("Live") && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Live Price Active</span>}
+                        {data.source === "Database" && <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded font-bold">Database Mode</span>}
+                        {data.livePriceActive && <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded font-bold">Live Price</span>}
                     </div>
                 </div>
                 <p className="mb-4">
@@ -220,7 +290,7 @@
                         {history.map((h, i) => (
                             <div key={i} className="flex flex-col items-center w-1/12">
                                 <span className="mb-2 text-xs font-bold text-gray-600">{h.val}x</span>
-                                <div className={`w-full rounded-t ${h.type === 'current' ? 'bg-msft-blue' : 'bg-gray-400'}`} style={{height: `${Math.min((h.val/200)*100, 100)}%`}}></div>
+                                <div className={`w-full rounded-t ${h.type === 'current' ? 'bg-msft-blue' : 'bg-gray-400'}`} style={{height: `${Math.min((h.val/maxVal)*100, 100)}%`}}></div>
                                 <span className="mt-2 text-xs font-bold text-gray-500">{h.year}</span>
                             </div>
                         ))}
@@ -262,7 +332,7 @@
                         <div className="mb-6"><strong className="block text-sm mb-4 text-gray-600">EPS Growth Path</strong>
                             {data.estimates.map((est, i) => {
                                 const widthPct = est.eps ? Math.min(100, (est.eps / Math.max(...data.estimates.map(e=>e.eps||0))) * 100) : 0;
-                                return <div key={i} className="flex items-center mb-4"><span className="w-12 text-sm font-bold text-gray-500">{est.year}E</span><div className="flex-1 h-3 bg-gray-100 rounded-full mx-4 overflow-hidden"><div className="h-full bg-val-barRed" style={{width: `${(i+1)*30}%`}}></div></div><span className="w-20 text-right font-bold text-gray-800">{est.eps ? '$'+est.eps : '-'}</span><span className="ml-2 text-xs font-bold text-val-green">{est.eps_growth ? '+'+est.eps_growth+'%' : ''}</span></div>
+                                return <div key={i} className="flex items-center mb-4"><span className="w-12 text-sm font-bold text-gray-500">{est.year}E</span><div className="flex-1 h-3 bg-gray-100 rounded-full mx-4 overflow-hidden"><div className="h-full bg-val-barRed" style={{width: `${widthPct}%`}}></div></div><span className="w-20 text-right font-bold text-gray-800">{est.eps ? '$'+est.eps : '-'}</span><span className="ml-2 text-xs font-bold text-val-green">{est.eps_growth ? '+'+est.eps_growth+'%' : ''}</span></div>
                             })}
                         </div>
                         <div><strong className="block text-sm mb-2 text-gray-600">Revenue Estimates</strong>
@@ -315,71 +385,43 @@
             const [data, setData] = useState(null);
             const [loading, setLoading] = useState(false);
             const [ticker, setTicker] = useState("TSLA");
-            const [logs, setLogs] = useState([]);
-            const [status, setStatus] = useState("Idle");
-
-            const addLog = (msg) => setLogs(prev => [...prev.slice(-4), msg]);
 
             const fetchData = async (sym) => {
                 setLoading(true); 
                 const cleanSym = sym.toUpperCase().replace(".US", ""); 
                 const fullSym = sym.toUpperCase().includes(".") ? sym.toUpperCase() : sym.toUpperCase() + ".US";
                 
-                setStatus("Checking Database...");
-                addLog(`Requesting: ${fullSym}`);
-
                 let displayData = null;
 
                 // 1. DATABASE LOOKUP (Priority 1)
                 if (INTERNAL_DB[cleanSym]) {
-                    addLog(`Found ${cleanSym} in Internal DB!`);
+                    console.log("DB Hit for " + cleanSym);
                     displayData = { ...INTERNAL_DB[cleanSym] }; 
                     setData(displayData);
                     setLoading(false); 
                     
                     // 2. LIVE PRICE UPDATE (Background)
-                    setStatus("Fetching Live Price...");
                     try {
                         const priceRes = await robustFetch(`https://eodhd.com/api/real-time/${fullSym}?api_token=${API_KEY}&fmt=json`);
                         const livePrice = priceRes.close || priceRes.Price;
                         if (livePrice && livePrice > 0) {
-                            addLog(`Live Price Updated: $${livePrice}`);
                             displayData.price = livePrice;
-                            displayData.source = "Database + Live API";
+                            displayData.livePriceActive = true;
                             if (displayData.estimates[0].eps) {
                                 displayData.pe_forward = (livePrice / displayData.estimates[0].eps).toFixed(1);
                             }
                             setData({ ...displayData }); 
                         }
                     } catch (e) {
-                        addLog("Live Price Failed (Using DB Price)");
+                        console.log("Live price fetch failed");
                     }
-                    setStatus("Ready");
                     return;
                 }
 
-                // 3. API FETCH (For Non-DB Tickers)
-                addLog(`${cleanSym} not in DB. Trying EOD API...`);
-                try {
-                    const priceRes = await robustFetch(`https://eodhd.com/api/real-time/${fullSym}?api_token=${API_KEY}&fmt=json`);
-                    const fundRes = await robustFetch(`https://eodhd.com/api/fundamentals/${fullSym}?api_token=${API_KEY}&fmt=json`);
-                    
-                    const processed = {
-                        name: fundRes.General?.Name || fullSym,
-                        ticker: fullSym,
-                        price: priceRes.close || priceRes.Price,
-                        description: fundRes.General?.Description,
-                        source: "Live API",
-                        history: [], estimates: [], multiples: {bear:10, base:15, bull:20}, swot:{s:[],w:[],o:[],t:[]}, supply_chain:"", ecosystem:"" 
-                    };
-                    setData(processed);
-                    addLog("API Fetch Success");
-                } catch (e) {
-                    addLog(`API Failed: ${e.message}`);
-                    setStatus("Error");
-                } finally {
-                    setLoading(false);
-                }
+                // 3. Fallback for non-DB stocks
+                // Only for demo purposes: if not in DB, show not found
+                setData(null);
+                setLoading(false);
             };
 
             useEffect(() => { fetchData(ticker); }, [ticker]);
@@ -393,7 +435,7 @@
                      data ? (
                         <div className="mt-8 animate-fade-in">
                             <div className="flex justify-between items-end mb-8 border-b-4 border-gray-100 pb-4">
-                                <div><h1 className="text-4xl text-msft-blue font-bold mb-2">{data.name}</h1><span className="text-gray-500 text-lg">Source: {data.source}</span></div>
+                                <div><h1 className="text-4xl text-msft-blue font-bold mb-2">{data.name}</h1><span className="text-gray-500 text-lg">Source: {data.source} {data.livePriceActive ? "+ Live" : ""}</span></div>
                                 <div className="text-right"><span className="text-3xl font-bold text-msft-dark">${data.price}</span><span className="block text-sm text-gray-500">Live Market Price</span></div>
                             </div>
                             
@@ -407,9 +449,9 @@
                             <SWOT swot={data.swot} />
                             <div className="mt-16 text-center text-gray-400 text-sm border-t border-gray-100 pt-8">Generated by Valuation Pro</div>
                         </div>
-                    ) : <div className="text-center mt-20 text-red-500 font-bold">No Data Found. Try searching 'TSLA' or 'NVDA'.</div>}
+                    ) : <div className="text-center mt-20 text-red-500 font-bold">Stock not in Database. Please use Admin Tool to generate data.</div>}
                     
-                    <DebugPanel logs={logs} status={status} />
+                    <AdminTool />
                 </div>
             );
         };
